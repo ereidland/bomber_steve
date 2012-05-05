@@ -6,6 +6,7 @@ import java.util.logging.Logger;
 
 
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -26,8 +27,11 @@ public class BomberSteve extends JavaPlugin {
 	
 	public int sizeX = 16, sizeY = 4, sizeZ = 16, density = 30, hDensity = 10, columnIncrement = 4;
 	
+	public Location victoryLocation;
+	
 	public void onEnable()
 	{
+		victoryLocation = getServer().getWorld("world").getSpawnLocation();
 		entityListener = new EntityListener(this);
 		blockListener = new BlockListener(this);
 		getServer().getPluginManager().registerEvents(blockListener, this);
@@ -132,6 +136,43 @@ public class BomberSteve extends JavaPlugin {
 						sender.sendMessage(ChatColor.GREEN + "Adding complexity...");
 						game.addComplexity();
 						sender.sendMessage(ChatColor.GREEN + "Region initialized. Use /bs join " + ChatColor.GOLD + game.getID() + ChatColor.GREEN + " to join.");
+					} else if ( args[0].equalsIgnoreCase("start") ) {
+						if ( args.length > 1 ) {
+							try {
+								int id = Integer.valueOf(args[1]);
+								BomberGame game = getGame(id);
+								if ( game != null ) {
+									if ( !game.bStarted ) {
+										game.bStarted = true;
+										for ( int i = 0; i < game.players.size(); i++ ) {
+											game.bringPlayer(game.players.get(i));
+										}
+									}
+								} else {
+									sender.sendMessage(ChatColor.RED + "Game " + ChatColor.GOLD + id + ChatColor.RED + " does not exist.");
+								}
+							} catch ( Exception e ) {
+								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+							}
+						} else {
+							sender.sendMessage(ChatColor.RED + "Not enough arguments. Use /bs start <gameid>");
+						}
+					} else if ( args[0].equalsIgnoreCase("clear") ) {
+						if ( args.length > 1 ) {
+							try {
+								int id = Integer.valueOf(args[1]);
+								BomberGame game = getGame(id);
+								if ( game != null ) {
+									game.clearRegion();
+								} else {
+									sender.sendMessage(ChatColor.RED + "Game " + ChatColor.GOLD + id + ChatColor.RED + " does not exist.");
+								}
+							} catch ( Exception e ) {
+								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+							}
+						} else {
+							sender.sendMessage(ChatColor.RED + "Not enough arguments. Use /bs clear <gameid>");
+						}
 					} else if ( args[0].equalsIgnoreCase("size") ) {
 						try {
 							if ( args.length > 3 ) {

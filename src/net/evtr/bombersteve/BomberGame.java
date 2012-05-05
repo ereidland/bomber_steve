@@ -14,7 +14,8 @@ public class BomberGame {
 	private int id;
 	public boolean bStarted;
 	
-	public Vector bottomLeft, size;
+	private Vector bottomLeft, size;
+	private BomberPlayer[][] damageOwner;
 	
 	public BomberSteve plugin;
 	public World world;
@@ -49,19 +50,42 @@ public class BomberGame {
 		}
 	}
 	
-	public boolean bombBlock(Block b) {
+	public boolean bombBlock(Block b, BomberPlayer player) {
+		boolean continueBombing = false, setDamageOwner = true;
 		switch (b.getType() ) {
 			case FIRE:
-				return true;
+				continueBombing = true;
+				break;
 			case COBBLESTONE:
 				clearColumn(b.getX(), b.getZ());
 				b.setType(Material.FIRE);
-				return false;
+				break;
 			case AIR:
 				b.setType(Material.FIRE);
-				return true;
+				continueBombing = true;
+				break;
 			default:
-				return false;
+				setDamageOwner = false;
+		}
+		if ( setDamageOwner ) {
+			
+		}
+		return continueBombing;
+	}
+	
+	public BomberPlayer getDamageOwner(int x, int z) {
+		x -= bottomLeft.getBlockX();
+		z -= bottomLeft.getBlockZ();
+		if ( x >= 0 && x < size.getBlockX() && z >= 0 && z < size.getBlockZ() ) {
+			return damageOwner[x][z];
+		}
+		return null;
+	}
+	public void setDamageOwner(int x, int z, BomberPlayer player) {
+		x -= bottomLeft.getBlockX();
+		z -= bottomLeft.getBlockZ();
+		if ( x >= 0 && x < size.getBlockX() && z >= 0 && z < size.getBlockZ() ) {
+			damageOwner[x][z] = player;
 		}
 	}
 	
@@ -69,27 +93,29 @@ public class BomberGame {
 		world.getBlockAt(x, getBombY(), z).setType(Material.AIR);
 		world.createExplosion(x, getBombY(), z, 0);
 		for ( int fx = x; fx <= x + range; fx++ ) {
-			if ( !bombBlock(world.getBlockAt(fx, getBombY(), z)) )
+			if ( !bombBlock(world.getBlockAt(fx, getBombY(), z), player) )
 				break;
 		}
 		for ( int fx = x - 1; fx >= x - range; fx-- ) {
-			if ( !bombBlock(world.getBlockAt(fx, getBombY(), z)) )
+			if ( !bombBlock(world.getBlockAt(fx, getBombY(), z), player) )
 				break;
 		}
 		
 		for ( int fz = z + 1; fz <= z + range; fz++ ) {
-			if ( !bombBlock(world.getBlockAt(x, getBombY(), fz)) )
+			if ( !bombBlock(world.getBlockAt(x, getBombY(), fz), player) )
 				break;
 		}
 		for ( int fz = z - 1; fz >= z - range; fz-- ) {
-			if ( !bombBlock(world.getBlockAt(x, getBombY(), fz)) )
+			if ( !bombBlock(world.getBlockAt(x, getBombY(), fz), player) )
 				break;
 		}
 	}
 	
 	public void onTimer() {
+		if ( !bStarted ) return;
 		for ( int x = bottomLeft.getBlockX(); x < bottomLeft.getBlockX() + size.getBlockX(); x++ ) {
 			for ( int z = bottomLeft.getBlockZ(); z < bottomLeft.getBlockZ() + size.getBlockZ(); z++ ) {
+				damageOwner[x - bottomLeft.getBlockX()][z - bottomLeft.getBlockZ()] = null;
 				Block b = world.getBlockAt(x, getBombY(), z);
 				if ( b.getType() == Material.FIRE ) {
 					b.setType(Material.AIR);
@@ -116,7 +142,7 @@ public class BomberGame {
 	}
 	
 	public boolean placeBomb(BomberPlayer player, int x, int y, int z) {
-		if ( hasPlayer(player)) {
+		if ( bStarted && hasPlayer(player) ) {
 			if ( player.bombs.size() < player.maxBombs ) {
 				Block b = world.getBlockAt(x, y, z);
 				b.setType(Material.TNT);
@@ -143,8 +169,8 @@ public class BomberGame {
 	public void addRandomBlocks(int density, boolean soft) {
 		Random r = new Random();
 		r.setSeed(System.currentTimeMillis());
-		for ( int x = bottomLeft.getBlockX(); x < bottomLeft.getBlockX() + size.getBlockX() - 1; x++ ) {
-			for ( int z = bottomLeft.getBlockZ(); z < bottomLeft.getBlockZ() + size.getBlockZ() - 1; z++ ) {
+		for ( int x = bottomLeft.getBlockX() + 1; x < bottomLeft.getBlockX() + size.getBlockX() - 1; x++ ) {
+			for ( int z = bottomLeft.getBlockZ() + 1; z < bottomLeft.getBlockZ() + size.getBlockZ() - 1; z++ ) {
 				if ( r.nextInt(99) < density ) {
 					for ( int y = bottomLeft.getBlockY() + 1; y < bottomLeft.getBlockY() + size.getBlockY() - 1; y++ ) {
 						Block b = world.getBlockAt(x, y, z);
@@ -158,7 +184,7 @@ public class BomberGame {
 	}
 	
 	public void clearRegion() { 
-		for ( int x = bottomLeft.getBlockX(); x < bottomLeft.getBlockX() + size.getBlockX(); x++ ) {
+		for ( int x = bottomLeft.getBlockX(); x < bottomLeft.getBlockX() + size.getBlockX() - 1; x++ ) {
 			for ( int z = bottomLeft.getBlockZ(); z < bottomLeft.getBlockZ() + size.getBlockZ(); z++ ) {
 				for ( int y = bottomLeft.getBlockY() + 1; y < bottomLeft.getBlockY() + size.getBlockY() - 1; y++ ) {
 					world.getBlockAt(x, y, z).setType(Material.AIR);
@@ -188,6 +214,8 @@ public class BomberGame {
 				}
 			}
 		}
+		
+		damageOwner = new BomberPlayer[size.getBlockX()][size.getBlockZ()];
 	}
 	public void addComplexity() {
 		addRandomBlocks(hardDensity, false);

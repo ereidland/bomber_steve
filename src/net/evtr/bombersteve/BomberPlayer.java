@@ -39,7 +39,6 @@ public class BomberPlayer {
 				break;
 			}
 		}
-		
 	}
 	
 	public BomberPlayer(Player player, int gameID) {

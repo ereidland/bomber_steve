@@ -1,0 +1,9 @@
+name: Bomber Steve
+version: 0.1
+main: net.evtr.bombersteve.BomberSteve
+
+commands:
+    bs:
+        description: 'The Bomber Steve command.'
+        usage: '/bs <something>'
+            

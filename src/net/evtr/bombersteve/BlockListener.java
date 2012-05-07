@@ -20,26 +20,30 @@ public class BlockListener implements Listener {
 			BomberGame game = plugin.getGame(plugin.getPlayer(event.getPlayer()).gameID);
 			Player player = event.getPlayer();
 			Block modBlock = player.getWorld().getBlockAt(event.getClickedBlock().getX() + event.getBlockFace().getModX(), event.getClickedBlock().getY() + event.getBlockFace().getModY(), event.getClickedBlock().getZ() + event.getBlockFace().getModZ());
+			if ( plugin.containsBlock(modBlock) ) {
+				event.setCancelled(true);
+			}
 			if ( modBlock.getType() == Material.AIR && game != null ) {
 				game.placeBomb(plugin.getPlayer(player), modBlock.getX(), game.getBombY(), modBlock.getZ());
 			} else {
 				player.sendMessage(ChatColor.RED + "Can't place bomb!");
 			}
 		}
-		event.setCancelled(true);
+		
 	}
 	
 	@EventHandler
 	public void stopPlacement(BlockPlaceEvent event) {
-		event.setCancelled(true);
+		if ( plugin.containsBlock(event.getBlock()) ) {
+			event.setCancelled(true);
+		}
 	}
 	
 	@EventHandler
 	public void stopBreaking(BlockBreakEvent event) {
-		//if ( plugin.isPlayerInGame(event.getPlayer()) ) {
+		if ( plugin.containsBlock(event.getBlock()) ) {
 			event.setCancelled(true);
-		//}
-		
+		}
 	}
 	
 	public BlockListener(BomberSteve plugin) {

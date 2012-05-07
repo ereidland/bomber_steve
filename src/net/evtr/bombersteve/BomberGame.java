@@ -42,7 +42,7 @@ public class BomberGame {
 		BomberPlayer owner = null;
 		for ( int i = 0; i < players.size(); i++ ) {
 			if ( players.get(i).ownsBomb(b) ) {
-				
+				owner = players.get(i);
 			}
 		}
 		return owner;
@@ -54,6 +54,25 @@ public class BomberGame {
 	
 	public int getBombY() {
 		return bottomLeft.getBlockY() + 1;
+	}
+	
+	public boolean containsBlock(int x, int y, int z) {
+		return x >= bottomLeft.getBlockX() && x <= bottomLeft.getBlockX() + size.getBlockX()
+			&& y >= bottomLeft.getBlockY() && y <= bottomLeft.getBlockY() + size.getBlockY()
+			&& z >= bottomLeft.getBlockZ() && z <= bottomLeft.getBlockZ() + size.getBlockZ();
+	}
+	
+	public boolean containsBlock(Block b) {
+		return containsBlock(b.getX(), b.getY(), b.getZ());
+	}
+	
+	public void stopGame() {
+		if ( bStarted ) {
+			bStarted = false;
+			removeBombs();
+			clearRegion();
+			resetDeaths();
+		}
 	}
 	
 	public void clearColumn(int x, int z) {
@@ -85,6 +104,7 @@ public class BomberGame {
 			bStarted = false;
 			removeBombs();
 			clearRegion();
+			resetDeaths();
 		}
 		
 		return gameEnded;
@@ -124,9 +144,11 @@ public class BomberGame {
 					setDamageOwner = false;
 					detonateBomb(owner, b.getX(), b.getZ(), owner.range);
 				} else {
+					b.setType(Material.FIRE);
 					setDamageOwner = true;
 					continueBombing = true;
 				}
+				break;
 			default:
 				setDamageOwner = false;
 		}
@@ -175,7 +197,7 @@ public class BomberGame {
 	}
 	
 	public void startGame(){
-		if ( !bStarted ) {
+		if ( !bStarted && players.size() > 0 ) {
 			addComplexity();
 			bStarted = true;
 			resetDeaths();
@@ -191,6 +213,20 @@ public class BomberGame {
 	}
 	public Vector getSize() {
 		return size;
+	}
+	
+	public void deleteEverything() {
+		bStarted = false;
+		removeBombs();
+		resetDeaths();
+		for ( int x = bottomLeft.getBlockX(); x <= bottomLeft.getBlockX() + size.getBlockX(); x++ ) {
+			for ( int z = bottomLeft.getBlockZ(); z <= bottomLeft.getBlockZ() + size.getBlockZ(); z++ ) {
+				for ( int y = bottomLeft.getBlockY(); y <= bottomLeft.getBlockY() + size.getBlockY(); y++ ) {
+					world.getBlockAt(x, y, z).setType(Material.AIR);
+				}
+			}
+		}
+		players.clear();
 	}
 	
 	public void onTimer() {
@@ -284,14 +320,13 @@ public class BomberGame {
 				world.getBlockAt(x, bottomLeft.getBlockY() + size.getBlockY() - 1, z).setType(Material.GLASS);
 				other = !other;
 				for ( int y = bottomLeft.getBlockY() + 1; y < bottomLeft.getBlockY() + size.getBlockY() - 1; y++ ) {
-					world.getBlockAt(x, y, z).setType(Material.AIR);
-					if ( z == bottomLeft.getBlockZ() ) {
-						world.getBlockAt(x, y, bottomLeft.getBlockZ()).setType(Material.GLASS);
-						world.getBlockAt(x, y, bottomLeft.getBlockZ() + size.getBlockZ()).setType(Material.GLASS);
-					}
-					if ( x == bottomLeft.getBlockX() ) {
+					if ( z == bottomLeft.getBlockZ()
+					  || z == bottomLeft.getBlockZ() + size.getBlockZ() - 1
+					  || x == bottomLeft.getBlockX()
+					  || x == bottomLeft.getBlockX() + size.getBlockX() - 1 ) {
 						world.getBlockAt(x, y, z).setType(Material.GLASS);
-						world.getBlockAt(x + size.getBlockX(), y, z).setType(Material.GLASS);
+					} else {
+						world.getBlockAt(x, y, z).setType(Material.AIR);
 					}
 				}
 			}

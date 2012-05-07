@@ -6,7 +6,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
-import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.EntityCombustEvent;
 import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
@@ -45,32 +44,36 @@ public class EntityListener implements Listener {
 	public void playerDied(PlayerDeathEvent event) {
 		BomberPlayer player = plugin.getPlayer((Player)event.getEntity());
 		BomberPlayer killer = player.player.getKiller() != null ? plugin.getPlayer(player.player.getKiller()) : null;
+		BomberGame game = plugin.getGame(player.gameID);
 		
-		if ( killer != player ) {
-			if ( killer != player) {
-				killer.points++;
-				event.setDeathMessage(ChatColor.GREEN + killer.player.getDisplayName() + ChatColor.GOLD + " defeated " + ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + "." );
+		if ( game != null ) {
+			if ( killer != player ) {
+				if ( killer != player) {
+					killer.points++;
+					event.setDeathMessage(ChatColor.GREEN + killer.player.getDisplayName() + ChatColor.GOLD + " defeated " + ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + "." );
+				} else {
+					event.setDeathMessage(ChatColor.RED + killer.player.getDisplayName() + ChatColor.GOLD + " blew theirself in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + ".");
+				}
 			} else {
-				event.setDeathMessage(ChatColor.RED + killer.player.getDisplayName() + ChatColor.GOLD + " blew theirself in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + ".");
+				event.setDeathMessage(ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " magically died.");
 			}
-		} else {
-			event.setDeathMessage(ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " magically died.");
+			
+			player.hasDied = true;
 		}
-		
-		player.hasDied = true;
 	}
 	
 	@EventHandler
 	public void creatureSpawn(CreatureSpawnEvent event) {
-		if(event.getSpawnReason() != SpawnReason.SPAWNER_EGG) {
+		if ( plugin.containsBlock(event.getLocation().getBlock()) ) {			
 			event.setCancelled(true);
 		}
 	}
 	
 	@EventHandler
 	public void entityPrimed(ExplosionPrimeEvent event) {
-		plugin.log.info("Entity primed! Canceled.");
-		event.setCancelled(true);
+		if ( plugin.containsBlock(event.getEntity().getLocation().getBlock()) ) {
+			event.setCancelled(true);
+		}
 	}
 	
 	public EntityListener(BomberSteve plugin) {

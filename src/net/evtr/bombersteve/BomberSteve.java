@@ -7,6 +7,7 @@ import java.util.logging.Logger;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -25,7 +26,7 @@ public class BomberSteve extends JavaPlugin {
 	public java.util.Vector<BomberGame> games;
 	public java.util.Vector<BomberPlayer> players;
 	
-	public int sizeX = 16, sizeY = 8, sizeZ = 16, density = 20, hDensity = 5, columnIncrement = 4;
+	public int sizeX = 16, sizeY = 8, sizeZ = 16, density = 20, hDensity = 5, columnIncrement = 4, selectedGame = 0;
 	
 	public Location victoryLocation;
 	
@@ -73,6 +74,19 @@ public class BomberSteve extends JavaPlugin {
 			id++;
 		}
 		return id;
+	}
+	
+	public boolean containsBlock(int x, int y, int z) {
+		for ( int i = 0; i < games.size(); i++ ) {
+			if ( games.get(i).containsBlock(x, y, z) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	public boolean containsBlock(Block b) {
+		return containsBlock(b.getX(), b.getY(), b.getZ());
 	}
 	
 	public void removeMissingPlayers() {
@@ -152,7 +166,13 @@ public class BomberSteve extends JavaPlugin {
 								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
 							}
 						} else {
-							sender.sendMessage(ChatColor.RED + "Not enough arguments. Use /bs start <gameid>");
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								game.startGame();
+								getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + " was started by " + sender.getName() + ".");
+							} else {
+								sender.sendMessage(ChatColor.RED + "No game selected.");
+							}
 						}
 					} else if ( args[0].equalsIgnoreCase("stop") ) {
 						if ( args.length > 1 ) {
@@ -161,7 +181,7 @@ public class BomberSteve extends JavaPlugin {
 								BomberGame game = getGame(id);
 								if ( game != null ) {
 									if ( game.bStarted ) {
-										game.bStarted = false;
+										game.stopGame();
 										getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + " was force stopped by " + sender.getName() + ".");
 									}
 								} else {
@@ -171,7 +191,17 @@ public class BomberSteve extends JavaPlugin {
 								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
 							}
 						} else {
-							sender.sendMessage(ChatColor.RED + "Not enough arguments. Use /bs start <gameid>");
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								if ( game.bStarted ) {
+									game.stopGame();
+									getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + " was force stopped by " + sender.getName() + ".");
+								} else {
+									sender.sendMessage(ChatColor.RED + "Game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + " is not even in progress.");
+								}
+							} else {
+								sender.sendMessage(ChatColor.RED + "No game selected.");
+							}
 						}
 					} else if ( args[0].equalsIgnoreCase("clear") ) {
 						if ( args.length > 1 ) {
@@ -187,7 +217,38 @@ public class BomberSteve extends JavaPlugin {
 								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
 							}
 						} else {
-							sender.sendMessage(ChatColor.RED + "Not enough arguments. Use /bs clear <gameid>");
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								game.clearRegion();
+							} else {
+								sender.sendMessage(ChatColor.RED + "No game selected.");
+							}
+						}
+					} else if ( args[0].equalsIgnoreCase("delete") ) {
+						if ( args.length > 1 ) {
+							try {
+								int id = Integer.valueOf(args[1]);
+								BomberGame game = getGame(id);
+								if ( game != null ) {
+									getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + " was deleted by " + sender.getName() + ".");
+									game.deleteEverything();
+									games.remove(game);
+								} else {
+									sender.sendMessage(ChatColor.RED + "Game " + ChatColor.GOLD + id + ChatColor.RED + " does not exist.");
+								}
+							} catch ( Exception e ) {
+								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+							}
+						} else {
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + " was deleted by " + sender.getName() + ".");
+								game.deleteEverything();
+								games.remove(game);
+								selectedGame = 0;
+							} else {
+								sender.sendMessage(ChatColor.RED + "No game selected.");
+							}
 						}
 					} else if ( args[0].equalsIgnoreCase("fill") ) {
 						if ( args.length > 1 ) {
@@ -195,10 +256,6 @@ public class BomberSteve extends JavaPlugin {
 								int id = Integer.valueOf(args[1]);
 								BomberGame game = getGame(id);
 								if ( game != null ) {
-									game.hardDensity = hDensity;
-									game.softDensity = density;
-									game.hardSpacing = columnIncrement;
-									
 									game.clearRegion();
 									game.addComplexity();
 								} else {
@@ -208,7 +265,23 @@ public class BomberSteve extends JavaPlugin {
 								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
 							}
 						} else {
-							sender.sendMessage(ChatColor.RED + "Not enough arguments. Use /bs clear <gameid>");
+							sender.sendMessage(ChatColor.RED + "Not enough arguments. Use /bs fill <gameid>");
+						}
+					} else if ( args[0].equalsIgnoreCase("sel") ) {
+						if ( args.length > 1 ) {
+							try {
+								selectedGame = Integer.valueOf(args[1]);
+								BomberGame game = getGame(selectedGame);
+								if ( game != null ) {
+									sender.sendMessage(ChatColor.GREEN + "Selected game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
+								} else {
+									sender.sendMessage(ChatColor.RED + "Game " + ChatColor.GOLD + selectedGame + ChatColor.RED + " does not exist.");
+								}
+							} catch ( Exception e ) {
+								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+							}
+						} else {
+							sender.sendMessage(ChatColor.YELLOW + "Currently selected game: " + ChatColor.GOLD + selectedGame + ChatColor.YELLOW + ".");
 						}
 					} else if ( args[0].equalsIgnoreCase("size") ) {
 						try {
@@ -243,6 +316,12 @@ public class BomberSteve extends JavaPlugin {
 								density = 0;
 							}
 							sender.sendMessage(ChatColor.YELLOW + "Current default soft density: " + density);
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								game.softDensity = density;
+								
+								sender.sendMessage(ChatColor.GREEN + "Set value for game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
+							}
 						} catch ( Exception e ) {
 							e.printStackTrace();
 							sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
@@ -258,6 +337,12 @@ public class BomberSteve extends JavaPlugin {
 								hDensity = 0;
 							}
 							sender.sendMessage(ChatColor.YELLOW + "Current default hard (unbreakable) density: " + hDensity);
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								game.hardDensity = hDensity;
+								
+								sender.sendMessage(ChatColor.GREEN + "Set value for game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
+							}
 						} catch ( Exception e ) {
 							e.printStackTrace();
 							sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
@@ -273,6 +358,13 @@ public class BomberSteve extends JavaPlugin {
 								columnIncrement = 2;
 							}
 							sender.sendMessage(ChatColor.YELLOW + "Current default column increment: " + columnIncrement);
+							
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								game.hardSpacing = columnIncrement;
+								
+								sender.sendMessage(ChatColor.GREEN + "Set value for game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
+							}
 						} catch ( Exception e ) {
 							e.printStackTrace();
 							sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
@@ -325,7 +417,20 @@ public class BomberSteve extends JavaPlugin {
 				}
 			} else {
 				int numGames = getActiveGameCount();
-				sender.sendMessage(ChatColor.GREEN + "There " + (numGames == 0 || numGames != 1 ? "are " : "is ") + (numGames == 0 ? ChatColor.RED : ChatColor.GOLD) + numGames + " active " + (numGames == 0 || numGames != 1 ? "games." : "game."));
+				sender.sendMessage(ChatColor.YELLOW + "There " + (numGames == 0 || numGames != 1 ? "are " : "is ") + (numGames == 0 ? ChatColor.RED : ChatColor.GOLD) + numGames + ChatColor.YELLOW + " active " + (numGames == 0 || numGames != 1 ? "games." : "game."));
+				String messageStr = ChatColor.GOLD + "[";
+				for ( int i = 0; i < games.size(); i++ ) {
+					BomberGame game = games.get(i);
+					messageStr += game.bStarted ? ChatColor.RED : ChatColor.GREEN;
+					messageStr += game.getID();
+					messageStr += (game.players.size() == 0 ? ChatColor.YELLOW : ChatColor.BLUE) + " (" + game.players.size() + ")";
+					if ( i < games.size() - 1) {
+						messageStr += ChatColor.GOLD + ", ";
+					}
+				}
+				messageStr += ChatColor.GOLD + "]";
+				sender.sendMessage(messageStr);
+				
 			}
 			return true;
 		}

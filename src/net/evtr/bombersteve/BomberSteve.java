@@ -26,7 +26,7 @@ public class BomberSteve extends JavaPlugin {
 	public java.util.Vector<BomberGame> games;
 	public java.util.Vector<BomberPlayer> players;
 	
-	public int sizeX = 16, sizeY = 8, sizeZ = 16, density = 20, hDensity = 5, columnIncrement = 4, selectedGame = 0;
+	public int sizeX = 16, sizeY = 8, sizeZ = 16, density = 20, hDensity = 5, columnIncrement = 4, selectedGame = 0, readyMargin = 60;
 	
 	public Location victoryLocation;
 	
@@ -265,7 +265,13 @@ public class BomberSteve extends JavaPlugin {
 								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
 							}
 						} else {
-							sender.sendMessage(ChatColor.RED + "Not enough arguments. Use /bs fill <gameid>");
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								game.clearRegion();
+								game.addComplexity();
+							} else {
+								sender.sendMessage(ChatColor.RED + "No game selected.");
+							}
 						}
 					} else if ( args[0].equalsIgnoreCase("sel") ) {
 						if ( args.length > 1 ) {
@@ -282,6 +288,27 @@ public class BomberSteve extends JavaPlugin {
 							}
 						} else {
 							sender.sendMessage(ChatColor.YELLOW + "Currently selected game: " + ChatColor.GOLD + selectedGame + ChatColor.YELLOW + ".");
+						}
+					} else if ( args[0].equalsIgnoreCase("repair") ) {
+						if ( args.length > 1 ) {
+							try {
+								int id = Integer.valueOf(args[1]);
+								BomberGame game = getGame(id);
+								if ( game != null ) {
+									sender.sendMessage(ChatColor.GREEN + "Repairing game " + ChatColor.GOLD + id + ChatColor.GREEN + ".");
+									game.repair();
+								}
+							} catch ( Exception e ) {
+								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+							}
+						} else {
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								sender.sendMessage(ChatColor.GREEN + "Repairing game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
+								game.repair();
+							} else {
+								sender.sendMessage(ChatColor.RED + "No game selected.");
+							}
 						}
 					} else if ( args[0].equalsIgnoreCase("size") ) {
 						try {
@@ -369,12 +396,34 @@ public class BomberSteve extends JavaPlugin {
 							e.printStackTrace();
 							sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
 						}
+					} else if ( args[0].equalsIgnoreCase("margin") ) {
+						try {
+							if ( args.length > 1 ) {
+								readyMargin = Integer.valueOf(args[1]);
+							}
+							if ( readyMargin > 100 ) {
+								readyMargin = 100;
+							} else if ( density < 1 ) {
+								density = 1;
+							}
+							sender.sendMessage(ChatColor.YELLOW + "Current ready percent required to start a game: %" + readyMargin);
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								game.softDensity = density;
+								
+								sender.sendMessage(ChatColor.GREEN + "Set value for game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
+							}
+						} catch ( Exception e ) {
+							e.printStackTrace();
+							sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+						}
 					}
 				}
 				BomberPlayer bsPlayer = getPlayer(player);
 				if ( args[0].equalsIgnoreCase("join") ) {
 					if ( args.length > 1 ) {
-						if ( bsPlayer.gameID == 0 ) {
+						BomberGame currentGame = getGame(bsPlayer.gameID);
+						if ( currentGame == null || !currentGame.bStarted ) {
 							try {
 								int id = Integer.valueOf(args[1]);
 								if ( id > 0 ) {
@@ -385,6 +434,9 @@ public class BomberSteve extends JavaPlugin {
 										} else {
 											int numPlayers = game.players.size();
 											getServer().broadcastMessage(ChatColor.GREEN + player.getDisplayName() + ChatColor.GOLD  + " joined game " + ChatColor.GREEN + id + ChatColor.GOLD + " (" + (numPlayers + 1) + " total).");
+											if ( currentGame != null ) {
+												currentGame.players.remove(bsPlayer);
+											}
 											game.addPlayer(bsPlayer);
 										}
 									} else {
@@ -395,7 +447,7 @@ public class BomberSteve extends JavaPlugin {
 								sender.sendMessage(ChatColor.RED + "The format is /bs join <number>");
 							}
 						} else {
-							sender.sendMessage(ChatColor.RED + "You are already in a game. Use /bs leave to leave.");
+							sender.sendMessage(ChatColor.RED + "You are already in an active game. Use /bs leave to leave");
 						}
 					} else {
 						int id = getPlayer(player).gameID;
@@ -406,11 +458,35 @@ public class BomberSteve extends JavaPlugin {
 						}
 					}
 				} else if ( args[0].equalsIgnoreCase("leave") ) {
-					if ( bsPlayer.gameID != 0 ) {
-						BomberGame game = getGame(bsPlayer.gameID);
+					BomberGame game = getGame(bsPlayer.gameID);
+					if ( game != null ) {
 						game.removePlayer(bsPlayer);
 						bsPlayer.gameID = 0;
-						sender.sendMessage(ChatColor.RED + "Leaver! :(");
+						if ( game.bStarted ) {
+							sender.sendMessage(ChatColor.RED + "Leaver! :(");
+						} else {
+							sender.sendMessage(ChatColor.GREEN + "Left game " + ChatColor.GOLD + game.getID() + ChatColor.GREEN + ".");
+						}
+					} else {
+						sender.sendMessage(ChatColor.RED + "You are not even in a game. Use /bs join <gameid>");
+					}
+				} else if ( args[0].equalsIgnoreCase("ready") ) {
+					BomberGame game = getGame(bsPlayer.gameID);
+					if ( game != null ) {
+						bsPlayer.isReady = true;
+						if ( !game.bStarted ) {
+							game.sendMessage(ChatColor.GREEN + player.getDisplayName() + ChatColor.GOLD + " is ready! Use \"/bs ready\" to ready up.");
+						}
+					} else {
+						sender.sendMessage(ChatColor.RED + "You are not even in a game. Use /bs join <gameid>");
+					}
+				} else if ( args[0].equalsIgnoreCase("unready") ) {
+					BomberGame game = getGame(bsPlayer.gameID);
+					if ( game != null ) {
+						bsPlayer.isReady = false;
+						if ( !game.bStarted ) {
+							game.sendMessage(ChatColor.GREEN + player.getDisplayName() + ChatColor.GOLD + " is not ready. Use \"/bs ready\" to ready up.");
+						}
 					} else {
 						sender.sendMessage(ChatColor.RED + "You are not even in a game. Use /bs join <gameid>");
 					}

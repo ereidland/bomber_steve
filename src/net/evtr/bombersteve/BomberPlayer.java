@@ -19,7 +19,7 @@ public class BomberPlayer {
 		}
 	}
 	
-	public boolean hasDied;
+	public boolean hasDied, isReady;
 	
 	public Vector<Bomb> bombs;
 	
@@ -54,5 +54,6 @@ public class BomberPlayer {
 		bombs = new Vector<Bomb>();
 		
 		hasDied = false;
+		isReady = false;
 	}
 }

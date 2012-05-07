@@ -3,6 +3,7 @@ package net.evtr.bombersteve;
 import java.util.Random;
 
 import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -20,7 +21,7 @@ public class BomberGame {
 	public BomberSteve plugin;
 	public World world;
 	
-	public int hardDensity, softDensity, hardSpacing;
+	public int hardDensity, softDensity, hardSpacing, lastReady = 0;
 	
 	public Random random;
 	
@@ -30,6 +31,7 @@ public class BomberGame {
 	
 	public void removePlayer(BomberPlayer player) {
 		players.remove(player);
+		lastReady = getNumReady();
 	}
 	public void addPlayer(BomberPlayer player) {
 		if ( !players.contains(player) ) {
@@ -69,16 +71,58 @@ public class BomberGame {
 	public void stopGame() {
 		if ( bStarted ) {
 			bStarted = false;
+			lastReady = 0;
 			removeBombs();
 			clearRegion();
 			resetDeaths();
+			unReadyPlayers();
 		}
+	}
+	
+	public void unReadyPlayers() {
+		for ( int i = 0; i < players.size(); i++ ) {
+			players.get(i).isReady = false;
+		}
+	}
+	
+	public void repair() {
+		removeBombs();
+		initRegion();
 	}
 	
 	public void clearColumn(int x, int z) {
 		for ( int y = getBombY(); y < bottomLeft.getBlockY() + size.getBlockY() - 1; y++ ) {
 			world.getBlockAt(x, y, z).setType(Material.AIR);
 		}
+	}
+	
+	public int getNumReady() {
+		if ( players.size() == 0 ) return 0;
+		int numReady = 0;
+		for ( int i = 0; i < players.size(); i++ ) {
+			if ( players.get(i).isReady ) {
+				numReady++;
+			}
+		}
+		return numReady;
+	}
+	
+	public int getReadyPercent() {
+		if ( players.size() == 0 ) return 0;
+		
+		return (int)Math.round((getNumReady()/(float)players.size())*100);
+	}
+	
+	public boolean checkForStart() {
+		int numReady = getNumReady(), readyPercent = getReadyPercent();
+		
+		if ( numReady != lastReady ) {
+			lastReady = numReady;
+			
+			sendMessage(ChatColor.YELLOW + "Now ready: " + (readyPercent >= plugin.readyMargin ? ChatColor.GREEN : ChatColor.BLUE) + numReady + ChatColor.GOLD + "/" + ChatColor.BLUE + players.size() + ChatColor.GOLD + " (" + (int)Math.ceil((players.size()*plugin.readyMargin)/100f) + " required).");
+		}
+		
+		return readyPercent >= plugin.readyMargin;
 	}
 	
 	public boolean checkForEnd() {
@@ -105,9 +149,16 @@ public class BomberGame {
 			removeBombs();
 			clearRegion();
 			resetDeaths();
+			unReadyPlayers();
 		}
 		
 		return gameEnded;
+	}
+	
+	public void sendMessage(String message) {
+		for ( int i = 0; i < players.size(); i++ ) {
+			players.get(i).player.sendMessage(message);
+		}
 	}
 	
 	public void resetDeaths() {
@@ -203,8 +254,11 @@ public class BomberGame {
 			resetDeaths();
 			
 			for ( int i = 0; i < players.size(); i++ ) {
+				players.get(i).player.setGameMode(GameMode.SURVIVAL);
 				bringPlayer(players.get(i));
 			}
+			
+			sendMessage(ChatColor.GREEN + "Begin!");
 		}
 	}
 	
@@ -230,6 +284,9 @@ public class BomberGame {
 	}
 	
 	public void onTimer() {
+		if ( !bStarted && checkForStart() ) {
+			startGame();
+		}
 		if ( !bStarted || checkForEnd() ) return;
 		for ( int x = bottomLeft.getBlockX(); x < bottomLeft.getBlockX() + size.getBlockX(); x++ ) {
 			for ( int z = bottomLeft.getBlockZ(); z < bottomLeft.getBlockZ() + size.getBlockZ(); z++ ) {

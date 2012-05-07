@@ -47,15 +47,11 @@ public class EntityListener implements Listener {
 		BomberGame game = plugin.getGame(player.gameID);
 		
 		if ( game != null ) {
-			if ( killer != player ) {
-				if ( killer != player) {
-					killer.points++;
-					event.setDeathMessage(ChatColor.GREEN + killer.player.getDisplayName() + ChatColor.GOLD + " defeated " + ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + "." );
-				} else {
-					event.setDeathMessage(ChatColor.RED + killer.player.getDisplayName() + ChatColor.GOLD + " blew theirself in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + ".");
-				}
+			if ( killer != player) {
+				killer.points++;
+				event.setDeathMessage(ChatColor.GREEN + killer.player.getDisplayName() + ChatColor.GOLD + " defeated " + ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + "." );
 			} else {
-				event.setDeathMessage(ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " magically died.");
+				event.setDeathMessage(ChatColor.RED + killer.player.getDisplayName() + ChatColor.GOLD + " blew theirself up in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + ".");
 			}
 			
 			player.hasDied = true;

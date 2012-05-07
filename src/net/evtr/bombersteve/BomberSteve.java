@@ -25,7 +25,7 @@ public class BomberSteve extends JavaPlugin {
 	public java.util.Vector<BomberGame> games;
 	public java.util.Vector<BomberPlayer> players;
 	
-	public int sizeX = 16, sizeY = 4, sizeZ = 16, density = 30, hDensity = 10, columnIncrement = 4;
+	public int sizeX = 32, sizeY = 8, sizeZ = 32, density = 20, hDensity = 5, columnIncrement = 4;
 	
 	public Location victoryLocation;
 	
@@ -133,6 +133,7 @@ public class BomberSteve extends JavaPlugin {
 						games.add(game);
 						sender.sendMessage(ChatColor.GREEN + "New game created with id " + game.getID() + ". Initializing region...");
 						game.initRegion();
+						player.teleport(new Location(player.getWorld(), player.getLocation().getX(), game.getBottomLeft().getBlockY() + game.getSize().getBlockY(), player.getLocation().getZ()));
 						sender.sendMessage(ChatColor.GREEN + "Adding complexity...");
 						game.addComplexity();
 						sender.sendMessage(ChatColor.GREEN + "Region initialized. Use /bs join " + ChatColor.GOLD + game.getID() + ChatColor.GREEN + " to join.");
@@ -143,10 +144,7 @@ public class BomberSteve extends JavaPlugin {
 								BomberGame game = getGame(id);
 								if ( game != null ) {
 									if ( !game.bStarted ) {
-										game.bStarted = true;
-										for ( int i = 0; i < game.players.size(); i++ ) {
-											game.bringPlayer(game.players.get(i));
-										}
+										game.startGame();
 										getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + " was started by " + sender.getName() + ".");
 									}
 								} else {
@@ -199,11 +197,12 @@ public class BomberSteve extends JavaPlugin {
 								int id = Integer.valueOf(args[1]);
 								BomberGame game = getGame(id);
 								if ( game != null ) {
-									game.clearRegion();
-									game.addComplexity();
 									game.hardDensity = hDensity;
 									game.softDensity = density;
 									game.hardSpacing = columnIncrement;
+									
+									game.clearRegion();
+									game.addComplexity();
 								} else {
 									sender.sendMessage(ChatColor.RED + "Game " + ChatColor.GOLD + id + ChatColor.RED + " does not exist.");
 								}
@@ -297,7 +296,6 @@ public class BomberSteve extends JavaPlugin {
 											int numPlayers = game.players.size();
 											getServer().broadcastMessage(ChatColor.GREEN + player.getDisplayName() + ChatColor.GOLD  + " joined game " + ChatColor.GREEN + id + ChatColor.GOLD + " (" + (numPlayers + 1) + " total).");
 											game.addPlayer(bsPlayer);
-											game.bringPlayer(bsPlayer);
 										}
 									} else {
 										sender.sendMessage(ChatColor.RED + "Game id " + id + " does not exist.");

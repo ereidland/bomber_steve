@@ -38,6 +38,16 @@ public class BomberGame {
 		player.gameID = id;
 	}
 	
+	public BomberPlayer getBombOwner(Block b) {
+		BomberPlayer owner = null;
+		for ( int i = 0; i < players.size(); i++ ) {
+			if ( players.get(i).ownsBomb(b) ) {
+				
+			}
+		}
+		return owner;
+	}
+	
 	public boolean hasPlayer(BomberPlayer player) {
 		return players.contains(player);
 	}
@@ -49,6 +59,46 @@ public class BomberGame {
 	public void clearColumn(int x, int z) {
 		for ( int y = getBombY(); y < bottomLeft.getBlockY() + size.getBlockY() - 1; y++ ) {
 			world.getBlockAt(x, y, z).setType(Material.AIR);
+		}
+	}
+	
+	public boolean checkForEnd() {
+		if ( !bStarted ) return false;
+		int numLiving = 0;
+		BomberPlayer possibleWinner = null;
+		for ( int i = 0; i < players.size(); i++ ) {
+			if ( players.get(i).hasDied == false ) {
+				numLiving++;
+				possibleWinner = players.get(i);
+			}
+		}
+		
+		boolean gameEnded = numLiving <= 1;
+		if ( gameEnded ) {
+			if ( possibleWinner != null ) {
+				possibleWinner.wins++;
+				plugin.getServer().broadcastMessage(ChatColor.GREEN + possibleWinner.player.getDisplayName() + ChatColor.GOLD + " won game " + ChatColor.GREEN + id + ChatColor.GOLD + "!" + ChatColor.GREEN + " (" + possibleWinner.wins + (possibleWinner.wins == 0 || possibleWinner.wins != 1 ? " wins" : " win" ) + " total).");
+			} else {
+				plugin.getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + id + ChatColor.GOLD + " ended in a draw!");
+			}
+			
+			bStarted = false;
+			removeBombs();
+			clearRegion();
+		}
+		
+		return gameEnded;
+	}
+	
+	public void resetDeaths() {
+		for ( int i = 0; i < players.size(); i++ ) {
+			players.get(i).hasDied = false;
+		}
+	}
+	
+	public void removeBombs() {
+		for ( int i = 0; i < players.size(); i++ ) {
+			players.get(i).bombs.clear();
 		}
 	}
 	
@@ -66,6 +116,17 @@ public class BomberGame {
 				b.setType(Material.FIRE);
 				continueBombing = true;
 				break;
+			case TNT:
+				BomberPlayer owner = getBombOwner(b);
+				if ( owner != null ) {
+					owner.disownBomb(b);
+					continueBombing = false;
+					setDamageOwner = false;
+					detonateBomb(owner, b.getX(), b.getZ(), owner.range);
+				} else {
+					setDamageOwner = true;
+					continueBombing = true;
+				}
 			default:
 				setDamageOwner = false;
 		}
@@ -113,8 +174,26 @@ public class BomberGame {
 		}
 	}
 	
+	public void startGame(){
+		if ( !bStarted ) {
+			bStarted = true;
+			resetDeaths();
+			
+			for ( int i = 0; i < players.size(); i++ ) {
+				bringPlayer(players.get(i));
+			}
+		}
+	}
+	
+	public Vector getBottomLeft() {
+		return bottomLeft;
+	}
+	public Vector getSize() {
+		return size;
+	}
+	
 	public void onTimer() {
-		if ( !bStarted ) return;
+		if ( !bStarted || checkForEnd() ) return;
 		for ( int x = bottomLeft.getBlockX(); x < bottomLeft.getBlockX() + size.getBlockX(); x++ ) {
 			for ( int z = bottomLeft.getBlockZ(); z < bottomLeft.getBlockZ() + size.getBlockZ(); z++ ) {
 				damageOwner[x - bottomLeft.getBlockX()][z - bottomLeft.getBlockZ()] = null;

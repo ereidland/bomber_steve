@@ -6,9 +6,8 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
 public class BomberPlayer {
-	public int range, points, maxBombs;
+	public int range, points, maxBombs, wins, gameID;
 	public Player player;
-	public int gameID;
 	
 	public static class Bomb {
 		public Block block;
@@ -24,17 +23,19 @@ public class BomberPlayer {
 	
 	public Vector<Bomb> bombs;
 	
-	public boolean ownsBlock(Block b) {
+	public boolean ownsBomb(Block b) {
 		for ( int i = 0; i < bombs.size(); i++ ) {
-			if ( bombs.get(i).block == b ) return true;
+			Block bomb = bombs.get(i).block;
+			if ( bomb.getX() == b.getX() && bomb.getY() == b.getY() && bomb.getZ() == b.getZ() ) return true;
 		}
 		
 		return false;
 	}
 	
-	public void disownBlock(Block b) {
+	public void disownBomb(Block b) {
 		for ( int i = 0; i < bombs.size(); i++ ) {
-			if ( bombs.get(i).block == b ) {
+			Block bomb = bombs.get(i).block;
+			if ( bomb.getX() == b.getX() && bomb.getY() == b.getY() && bomb.getZ() == b.getZ() ) {
 				bombs.remove(i);
 				break;
 			}
@@ -47,6 +48,7 @@ public class BomberPlayer {
 		this.gameID = gameID;
 		range = 4;
 		points = 0;
+		wins = 0;
 		
 		maxBombs = 1;
 		bombs = new Vector<Bomb>();

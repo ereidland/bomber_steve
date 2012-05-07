@@ -25,7 +25,7 @@ public class BomberSteve extends JavaPlugin {
 	public java.util.Vector<BomberGame> games;
 	public java.util.Vector<BomberPlayer> players;
 	
-	public int sizeX = 32, sizeY = 8, sizeZ = 32, density = 20, hDensity = 5, columnIncrement = 4;
+	public int sizeX = 16, sizeY = 8, sizeZ = 16, density = 20, hDensity = 5, columnIncrement = 4;
 	
 	public Location victoryLocation;
 	
@@ -134,8 +134,6 @@ public class BomberSteve extends JavaPlugin {
 						sender.sendMessage(ChatColor.GREEN + "New game created with id " + game.getID() + ". Initializing region...");
 						game.initRegion();
 						player.teleport(new Location(player.getWorld(), player.getLocation().getX(), game.getBottomLeft().getBlockY() + game.getSize().getBlockY(), player.getLocation().getZ()));
-						sender.sendMessage(ChatColor.GREEN + "Adding complexity...");
-						game.addComplexity();
 						sender.sendMessage(ChatColor.GREEN + "Region initialized. Use /bs join " + ChatColor.GOLD + game.getID() + ChatColor.GREEN + " to join.");
 					} else if ( args[0].equalsIgnoreCase("start") ) {
 						if ( args.length > 1 ) {

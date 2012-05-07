@@ -176,6 +176,7 @@ public class BomberGame {
 	
 	public void startGame(){
 		if ( !bStarted ) {
+			addComplexity();
 			bStarted = true;
 			resetDeaths();
 			

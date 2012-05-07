@@ -147,6 +147,26 @@ public class BomberSteve extends JavaPlugin {
 										for ( int i = 0; i < game.players.size(); i++ ) {
 											game.bringPlayer(game.players.get(i));
 										}
+										getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + " was started by " + sender.getName() + ".");
+									}
+								} else {
+									sender.sendMessage(ChatColor.RED + "Game " + ChatColor.GOLD + id + ChatColor.RED + " does not exist.");
+								}
+							} catch ( Exception e ) {
+								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+							}
+						} else {
+							sender.sendMessage(ChatColor.RED + "Not enough arguments. Use /bs start <gameid>");
+						}
+					} else if ( args[0].equalsIgnoreCase("stop") ) {
+						if ( args.length > 1 ) {
+							try {
+								int id = Integer.valueOf(args[1]);
+								BomberGame game = getGame(id);
+								if ( game != null ) {
+									if ( game.bStarted ) {
+										game.bStarted = false;
+										getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + " was force stopped by " + sender.getName() + ".");
 									}
 								} else {
 									sender.sendMessage(ChatColor.RED + "Game " + ChatColor.GOLD + id + ChatColor.RED + " does not exist.");
@@ -164,6 +184,26 @@ public class BomberSteve extends JavaPlugin {
 								BomberGame game = getGame(id);
 								if ( game != null ) {
 									game.clearRegion();
+								} else {
+									sender.sendMessage(ChatColor.RED + "Game " + ChatColor.GOLD + id + ChatColor.RED + " does not exist.");
+								}
+							} catch ( Exception e ) {
+								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+							}
+						} else {
+							sender.sendMessage(ChatColor.RED + "Not enough arguments. Use /bs clear <gameid>");
+						}
+					} else if ( args[0].equalsIgnoreCase("fill") ) {
+						if ( args.length > 1 ) {
+							try {
+								int id = Integer.valueOf(args[1]);
+								BomberGame game = getGame(id);
+								if ( game != null ) {
+									game.clearRegion();
+									game.addComplexity();
+									game.hardDensity = hDensity;
+									game.softDensity = density;
+									game.hardSpacing = columnIncrement;
 								} else {
 									sender.sendMessage(ChatColor.RED + "Game " + ChatColor.GOLD + id + ChatColor.RED + " does not exist.");
 								}

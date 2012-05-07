@@ -22,6 +22,8 @@ public class BomberGame {
 	
 	public int hardDensity, softDensity, hardSpacing;
 	
+	public Random random;
+	
 	public int getID() {
 		return id;
 	}
@@ -68,7 +70,7 @@ public class BomberGame {
 				setDamageOwner = false;
 		}
 		if ( setDamageOwner ) {
-			
+			setDamageOwner(b.getX(), b.getZ(), player);
 		}
 		return continueBombing;
 	}
@@ -142,7 +144,7 @@ public class BomberGame {
 	}
 	
 	public boolean placeBomb(BomberPlayer player, int x, int y, int z) {
-		if ( bStarted && hasPlayer(player) ) {
+		if ( bStarted && hasPlayer(player) && x > bottomLeft.getBlockX() && x < bottomLeft.getBlockX() + size.getBlockX() - 1 && z > bottomLeft.getBlockZ() && z < bottomLeft.getBlockZ() + size.getBlockZ() - 1 ) {
 			if ( player.bombs.size() < player.maxBombs ) {
 				Block b = world.getBlockAt(x, y, z);
 				b.setType(Material.TNT);
@@ -165,7 +167,7 @@ public class BomberGame {
 	}
 	
 	
-	//Note: from 0 to 100
+	//Note: density is from 0 to 100
 	public void addRandomBlocks(int density, boolean soft) {
 		Random r = new Random();
 		r.setSeed(System.currentTimeMillis());
@@ -184,8 +186,8 @@ public class BomberGame {
 	}
 	
 	public void clearRegion() { 
-		for ( int x = bottomLeft.getBlockX(); x < bottomLeft.getBlockX() + size.getBlockX() - 1; x++ ) {
-			for ( int z = bottomLeft.getBlockZ(); z < bottomLeft.getBlockZ() + size.getBlockZ(); z++ ) {
+		for ( int x = bottomLeft.getBlockX() + 1; x < bottomLeft.getBlockX() + size.getBlockX() - 1; x++ ) {
+			for ( int z = bottomLeft.getBlockZ() + 1; z < bottomLeft.getBlockZ() + size.getBlockZ() - 1; z++ ) {
 				for ( int y = bottomLeft.getBlockY() + 1; y < bottomLeft.getBlockY() + size.getBlockY() - 1; y++ ) {
 					world.getBlockAt(x, y, z).setType(Material.AIR);
 				}
@@ -199,17 +201,17 @@ public class BomberGame {
 			other = !other;
 			for ( int z = bottomLeft.getBlockZ(); z < bottomLeft.getBlockZ() + size.getBlockZ(); z++ ) {
 				world.getBlockAt(x, bottomLeft.getBlockY(), z).setType(other ? Material.WOOD : Material.STONE);
-				other = !other;
 				world.getBlockAt(x, bottomLeft.getBlockY() + size.getBlockY() - 1, z).setType(Material.GLASS);
+				other = !other;
 				for ( int y = bottomLeft.getBlockY() + 1; y < bottomLeft.getBlockY() + size.getBlockY() - 1; y++ ) {
 					world.getBlockAt(x, y, z).setType(Material.AIR);
 					if ( z == bottomLeft.getBlockZ() ) {
 						world.getBlockAt(x, y, bottomLeft.getBlockZ()).setType(Material.GLASS);
-						world.getBlockAt(x, y, bottomLeft.getBlockZ() + size.getBlockZ() - 1).setType(Material.GLASS);
+						world.getBlockAt(x, y, bottomLeft.getBlockZ() + size.getBlockZ()).setType(Material.GLASS);
 					}
 					if ( x == bottomLeft.getBlockX() ) {
 						world.getBlockAt(x, y, z).setType(Material.GLASS);
-						world.getBlockAt(x + size.getBlockX() - 1, y, z).setType(Material.GLASS);
+						world.getBlockAt(x + size.getBlockX(), y, z).setType(Material.GLASS);
 					}
 				}
 			}
@@ -223,13 +225,20 @@ public class BomberGame {
 		addColumns(hardSpacing);
 	}
 	
+	private void bringPlayer(BomberPlayer player, int numTries) {
+		int bx = bottomLeft.getBlockX() + 1 + random.nextInt(size.getBlockX() - 2), by =  getBombY(), bz = bottomLeft.getBlockZ() + 1 + random.nextInt(size.getBlockZ() - 2);
+		Block b = world.getBlockAt(bx, by, bz);
+		if ( b.getType() == Material.AIR || numTries >= 10 ) {
+			player.player.teleport(new Location(world, bx + 0.5, by, bz + 0.5));
+			player.player.sendMessage(ChatColor.GOLD + "To arena " + ChatColor.GREEN + id + ChatColor.GOLD + "!");
+		} else {
+			bringPlayer(player, numTries + 1);
+		}
+	}
+	
 	public void bringPlayer(BomberPlayer player) {
 		if ( hasPlayer(player)) {
-			Random r = new Random(System.currentTimeMillis());
-			Location loc = new Location(world, bottomLeft.getBlockX() + 1 + r.nextInt(size.getBlockX() - 2), getBombY(), bottomLeft.getBlockZ() + 1 + r.nextInt(size.getBlockZ() - 2));
-			player.player.teleport(loc);
-			player.player.sendMessage(ChatColor.GOLD + "To arena " + ChatColor.GREEN + id + ChatColor.GOLD + "!");
-			//TODO test to make sure they don't end up inside wall. Maybe predefined start positions?
+			bringPlayer(player, 0);
 		}
 	}
 	
@@ -247,5 +256,7 @@ public class BomberGame {
 		hardSpacing = 2;
 		hardDensity = 10;
 		softDensity = 25;
+		
+		random = new Random(System.currentTimeMillis());
 	}
 }

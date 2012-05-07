@@ -1,6 +1,7 @@
 package net.evtr.bombersteve;
 
 import org.bukkit.ChatColor;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -21,16 +22,23 @@ public class EntityListener implements Listener {
 	
 	@EventHandler
 	public void playerBurned(EntityCombustEvent event) {
-		plugin.log.info("Combustion event!");
-		return;/*
-		if ( event.getEntity() != null && event.getEntity() instanceof Player) {
-			BomberPlayer player = plugin.getPlayer((Player)event.getEntity());
-			BomberGame game = plugin.getGame(player.gameID);
-			if ( game != null ) {
-				BomberPlayer damager = game.getDamageOwner(player.player.getLocation().getBlockX(), player.player.getLocation().getBlockZ());
-				player.player.damage(9001, damager.player);
+		try {
+			if ( event.getEntity() != null && event.getEntity().getType() == EntityType.PLAYER) {
+				BomberPlayer player = plugin.getPlayer((Player)event.getEntity());
+				
+				if ( player.hasDied ) return;
+				
+				BomberGame game = plugin.getGame(player.gameID);
+				if ( game != null ) {
+					BomberPlayer damager = game.getDamageOwner(player.player.getLocation().getBlockX(), player.player.getLocation().getBlockZ());
+					player.player.damage(9001, damager != null ? damager.player : player.player);
+					player.hasDied = true;
+				}
 			}
-		}*/
+			event.setCancelled(true);
+		} catch ( Exception e ) {
+			e.printStackTrace();
+		}
 	}
 	
 	@EventHandler
@@ -38,9 +46,13 @@ public class EntityListener implements Listener {
 		BomberPlayer player = plugin.getPlayer((Player)event.getEntity());
 		BomberPlayer killer = player.player.getKiller() != null ? plugin.getPlayer(player.player.getKiller()) : null;
 		
-		if ( killer != null ) {
-			killer.points++;
-			event.setDeathMessage(ChatColor.GREEN + killer.player.getDisplayName() + ChatColor.GOLD + " defeated (in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + ") " + ChatColor.RED + player.player.getDisplayName());
+		if ( killer != player ) {
+			if ( killer != player) {
+				killer.points++;
+				event.setDeathMessage(ChatColor.GREEN + killer.player.getDisplayName() + ChatColor.GOLD + " defeated " + ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + "." );
+			} else {
+				event.setDeathMessage(ChatColor.RED + killer.player.getDisplayName() + ChatColor.GOLD + " blew theirself in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + ".");
+			}
 		} else {
 			event.setDeathMessage(ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " magically died.");
 		}

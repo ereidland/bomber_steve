@@ -23,15 +23,14 @@ public class BlockListener implements Listener {
 			if ( plugin.containsBlock(modBlock) ) {
 				event.setCancelled(true);
 			}
-			if ( modBlock.getType() == Material.AIR  ) {
-				if ( game != null ) {
+			if ( game != null ) {
+				if ( modBlock.getType() == Material.AIR  ) {					
 					game.placeBomb(plugin.getPlayer(player), modBlock.getX(), game.getBombY(), modBlock.getZ());
+				} else {
+					player.sendMessage(ChatColor.RED + "Can't place bomb!");
 				}
-			} else {
-				player.sendMessage(ChatColor.RED + "Can't place bomb!");
 			}
 		}
-		
 	}
 	
 	@EventHandler
@@ -45,6 +44,30 @@ public class BlockListener implements Listener {
 	public void stopBreaking(BlockBreakEvent event) {
 		if ( plugin.containsBlock(event.getBlock()) ) {
 			event.setCancelled(true);
+			
+			Block b = event.getBlock();
+			
+			BomberPlayer player = plugin.getPlayer(event.getPlayer());
+			
+			boolean destroy = true;
+			switch ( b.getType() ) {
+				case RED_ROSE:
+					player.maxBombs++;
+					player.player.sendMessage(ChatColor.GREEN + "Bomb capacity increased to " + ChatColor.BLUE + player.maxBombs + ChatColor.GREEN + "!");
+					break;
+				case YELLOW_FLOWER:
+					player.range++;
+					player.player.sendMessage(ChatColor.GREEN + "Bomb range increased to " + ChatColor.BLUE + player.range + ChatColor.GREEN + "!");
+					break;
+				case LONG_GRASS:
+					break;
+				default:
+					destroy = false;
+			}
+			
+			if ( destroy ) {
+				b.setType(Material.AIR);
+			}
 		}
 	}
 	

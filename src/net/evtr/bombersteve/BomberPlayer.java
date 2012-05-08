@@ -23,6 +23,8 @@ public class BomberPlayer {
 	
 	public Vector<Bomb> bombs;
 	
+	public BomberPlayer killer;
+	
 	public boolean ownsBomb(Block b) {
 		for ( int i = 0; i < bombs.size(); i++ ) {
 			Block bomb = bombs.get(i).block;
@@ -46,7 +48,7 @@ public class BomberPlayer {
 		this.player = player;
 		
 		this.gameID = gameID;
-		range = 4;
+		range = 1;
 		points = 0;
 		wins = 0;
 		
@@ -55,5 +57,7 @@ public class BomberPlayer {
 		
 		hasDied = false;
 		isReady = false;
+		
+		killer = null;
 	}
 }

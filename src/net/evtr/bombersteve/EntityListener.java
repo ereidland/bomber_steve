@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityCombustEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -20,6 +21,23 @@ public class EntityListener implements Listener {
 	}
 	
 	@EventHandler
+	public void playerDamageEvent(EntityDamageEvent event) {
+		if ( event.getEntityType() == EntityType.PLAYER ) {
+			BomberPlayer player = plugin.getPlayer((Player)event.getEntity());
+			BomberGame game = plugin.getGame(player.gameID);
+			
+			if ( game != null ) {
+				switch ( event.getCause() ) {
+					case FIRE:
+						break;
+					default:
+						event.setCancelled(true);
+				}
+			}
+		}
+	}
+	
+	@EventHandler
 	public void playerBurned(EntityCombustEvent event) {
 		try {
 			if ( event.getEntity() != null && event.getEntity().getType() == EntityType.PLAYER) {
@@ -30,8 +48,10 @@ public class EntityListener implements Listener {
 				BomberGame game = plugin.getGame(player.gameID);
 				if ( game != null ) {
 					BomberPlayer damager = game.getDamageOwner(player.player.getLocation().getBlockX(), player.player.getLocation().getBlockZ());
-					player.player.damage(9001, damager != null ? damager.player : player.player);
+					//player.player.damage(9001, damager != null ? damager.player : player.player);
+					player.killer = damager; 
 					player.hasDied = true;
+					player.player.damage(9001);
 				}
 			}
 			event.setCancelled(true);
@@ -43,17 +63,19 @@ public class EntityListener implements Listener {
 	@EventHandler
 	public void playerDied(PlayerDeathEvent event) {
 		BomberPlayer player = plugin.getPlayer((Player)event.getEntity());
-		BomberPlayer killer = player.player.getKiller() != null ? plugin.getPlayer(player.player.getKiller()) : null;
+		
 		BomberGame game = plugin.getGame(player.gameID);
 		
 		if ( game != null ) {
-			if ( killer != player) {
+			BomberPlayer killer = player.killer;
+			if ( killer == null ) {
+				event.setDeathMessage(ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " magically died in game " + ChatColor.GREEN + player.gameID + ChatColor.GOLD + ".");
+			} else if ( killer != player) {
 				killer.points++;
 				event.setDeathMessage(ChatColor.GREEN + killer.player.getDisplayName() + ChatColor.GOLD + " defeated " + ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + "." );
 			} else {
 				event.setDeathMessage(ChatColor.RED + killer.player.getDisplayName() + ChatColor.GOLD + " blew theirself up in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + ".");
 			}
-			
 			player.hasDied = true;
 		}
 	}

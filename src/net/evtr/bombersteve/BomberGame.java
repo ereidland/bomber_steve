@@ -21,12 +21,24 @@ public class BomberGame {
 	public BomberSteve plugin;
 	public World world;
 	
-	public int hardDensity, softDensity, hardSpacing, lastReady = 0;
+	public int hardDensity, softDensity, hardSpacing, lastReady, timeUntilStart;
 	
 	public Random random;
 	
 	public int getID() {
 		return id;
+	}
+	
+	public Material newPowerup() {
+		int n = random.nextInt(5);
+		switch ( n ) {
+			case 0:
+				return Material.RED_ROSE;
+			case 1:
+				return Material.YELLOW_FLOWER;
+			default:
+				return Material.AIR;
+		}
 	}
 	
 	public void removePlayer(BomberPlayer player) {
@@ -45,6 +57,7 @@ public class BomberGame {
 		for ( int i = 0; i < players.size(); i++ ) {
 			if ( players.get(i).ownsBomb(b) ) {
 				owner = players.get(i);
+				break;
 			}
 		}
 		return owner;
@@ -74,7 +87,7 @@ public class BomberGame {
 			lastReady = 0;
 			removeBombs();
 			clearRegion();
-			resetDeaths();
+			resetPlayerInfo();
 			unReadyPlayers();
 		}
 	}
@@ -100,7 +113,7 @@ public class BomberGame {
 		if ( players.size() == 0 ) return 0;
 		int numReady = 0;
 		for ( int i = 0; i < players.size(); i++ ) {
-			if ( players.get(i).isReady ) {
+			if ( players.get(i).isReady && !players.get(i).player.isDead() ) {
 				numReady++;
 			}
 		}
@@ -119,7 +132,7 @@ public class BomberGame {
 		if ( numReady != lastReady ) {
 			lastReady = numReady;
 			
-			sendMessage(ChatColor.YELLOW + "Now ready: " + (readyPercent >= plugin.readyMargin ? ChatColor.GREEN : ChatColor.BLUE) + numReady + ChatColor.GOLD + "/" + ChatColor.BLUE + players.size() + ChatColor.GOLD + " (" + (int)Math.ceil((players.size()*plugin.readyMargin)/100f) + " required).");
+			sendMessage(ChatColor.YELLOW + "Now ready: " + (readyPercent >= plugin.readyMargin ? ChatColor.GREEN : ChatColor.BLUE) + numReady + ChatColor.GOLD + "/" + ChatColor.BLUE + players.size() + ChatColor.GOLD + " (" + Math.max((int)Math.ceil((players.size()*plugin.readyMargin)/100f), 2) + " required).");
 		}
 		
 		return readyPercent >= plugin.readyMargin;
@@ -148,7 +161,7 @@ public class BomberGame {
 			bStarted = false;
 			removeBombs();
 			clearRegion();
-			resetDeaths();
+			resetPlayerInfo();
 			unReadyPlayers();
 		}
 		
@@ -161,9 +174,13 @@ public class BomberGame {
 		}
 	}
 	
-	public void resetDeaths() {
+	public void resetPlayerInfo() {
 		for ( int i = 0; i < players.size(); i++ ) {
-			players.get(i).hasDied = false;
+			BomberPlayer player = players.get(i);
+			player.hasDied = false;
+			player.maxBombs = 1;
+			player.range = 1;
+			player.killer = null;
 		}
 	}
 	
@@ -181,9 +198,13 @@ public class BomberGame {
 				break;
 			case COBBLESTONE:
 				clearColumn(b.getX(), b.getZ());
-				b.setType(Material.FIRE);
+				b.setType(newPowerup());
+				setDamageOwner = false;
 				break;
 			case AIR:
+			case RED_ROSE:
+			case YELLOW_FLOWER:
+			case LONG_GRASS:
 				b.setType(Material.FIRE);
 				continueBombing = true;
 				break;
@@ -191,7 +212,6 @@ public class BomberGame {
 				BomberPlayer owner = getBombOwner(b);
 				if ( owner != null ) {
 					owner.disownBomb(b);
-					continueBombing = false;
 					setDamageOwner = false;
 					detonateBomb(owner, b.getX(), b.getZ(), owner.range);
 				} else {
@@ -248,23 +268,36 @@ public class BomberGame {
 	}
 	
 	public void startGame(){
-		if ( !bStarted && players.size() > 0 ) {
+		if ( !bStarted && players.size() > 1 ) {
 			addComplexity();
 			bStarted = true;
-			resetDeaths();
+			resetPlayerInfo();
+			
+			java.util.Vector<BomberPlayer> toRemove = new java.util.Vector<BomberPlayer>();
 			
 			for ( int i = 0; i < players.size(); i++ ) {
-				players.get(i).player.setGameMode(GameMode.SURVIVAL);
-				bringPlayer(players.get(i));
+				BomberPlayer player = players.get(i);
+				if ( player.player.isDead() ) {
+					toRemove.add(player);
+					sendMessage(ChatColor.RED + "Removing " + ChatColor.YELLOW + player.player.getDisplayName() + ChatColor.RED + " from the game because they are dead.");
+					continue;
+				}
+				
+				player.player.setGameMode(GameMode.SURVIVAL);
+				bringPlayer(player);
 			}
-			
-			sendMessage(ChatColor.GREEN + "Begin!");
+			for ( int i = 0; i < toRemove.size(); i++ ) {
+				players.remove(toRemove.get(i));
+			}
+			timeUntilStart = 4;
+			sendMessage(ChatColor.GOLD + "Start in...");
 		}
 	}
 	
 	public Vector getBottomLeft() {
 		return bottomLeft;
 	}
+	
 	public Vector getSize() {
 		return size;
 	}
@@ -272,7 +305,7 @@ public class BomberGame {
 	public void deleteEverything() {
 		bStarted = false;
 		removeBombs();
-		resetDeaths();
+		resetPlayerInfo();
 		for ( int x = bottomLeft.getBlockX(); x <= bottomLeft.getBlockX() + size.getBlockX(); x++ ) {
 			for ( int z = bottomLeft.getBlockZ(); z <= bottomLeft.getBlockZ() + size.getBlockZ(); z++ ) {
 				for ( int y = bottomLeft.getBlockY(); y <= bottomLeft.getBlockY() + size.getBlockY(); y++ ) {
@@ -286,8 +319,15 @@ public class BomberGame {
 	public void onTimer() {
 		if ( !bStarted && checkForStart() ) {
 			startGame();
+		} else if ( timeUntilStart > 0 ) {
+			timeUntilStart--;
+			if ( timeUntilStart <= 0 ) {
+				sendMessage(ChatColor.GREEN + "Begin!");
+			} else {
+				sendMessage(ChatColor.YELLOW + "..." + ChatColor.GOLD + timeUntilStart);
+			}
 		}
-		if ( !bStarted || checkForEnd() ) return;
+		if ( !bStarted || checkForEnd() || timeUntilStart > 0) return;
 		for ( int x = bottomLeft.getBlockX(); x < bottomLeft.getBlockX() + size.getBlockX(); x++ ) {
 			for ( int z = bottomLeft.getBlockZ(); z < bottomLeft.getBlockZ() + size.getBlockZ(); z++ ) {
 				damageOwner[x - bottomLeft.getBlockX()][z - bottomLeft.getBlockZ()] = null;
@@ -317,7 +357,7 @@ public class BomberGame {
 	}
 	
 	public boolean placeBomb(BomberPlayer player, int x, int y, int z) {
-		if ( bStarted && hasPlayer(player) && x > bottomLeft.getBlockX() && x < bottomLeft.getBlockX() + size.getBlockX() - 1 && z > bottomLeft.getBlockZ() && z < bottomLeft.getBlockZ() + size.getBlockZ() - 1 ) {
+		if ( bStarted && timeUntilStart <= 0 && hasPlayer(player) && x > bottomLeft.getBlockX() && x < bottomLeft.getBlockX() + size.getBlockX() - 1 && z > bottomLeft.getBlockZ() && z < bottomLeft.getBlockZ() + size.getBlockZ() - 1 ) {
 			if ( player.bombs.size() < player.maxBombs ) {
 				Block b = world.getBlockAt(x, y, z);
 				b.setType(Material.TNT);
@@ -373,7 +413,7 @@ public class BomberGame {
 		for ( int x = bottomLeft.getBlockX(); x < bottomLeft.getBlockX() + size.getBlockX(); x++ ) {
 			other = !other;
 			for ( int z = bottomLeft.getBlockZ(); z < bottomLeft.getBlockZ() + size.getBlockZ(); z++ ) {
-				world.getBlockAt(x, bottomLeft.getBlockY(), z).setType(other ? Material.WOOD : Material.STONE);
+				world.getBlockAt(x, bottomLeft.getBlockY(), z).setType(other ? Material.GRASS : Material.DIRT);
 				world.getBlockAt(x, bottomLeft.getBlockY() + size.getBlockY() - 1, z).setType(Material.GLASS);
 				other = !other;
 				for ( int y = bottomLeft.getBlockY() + 1; y < bottomLeft.getBlockY() + size.getBlockY() - 1; y++ ) {
@@ -428,6 +468,9 @@ public class BomberGame {
 		hardSpacing = 2;
 		hardDensity = 10;
 		softDensity = 25;
+		
+		lastReady = 0;
+		timeUntilStart = 0;
 		
 		random = new Random(System.currentTimeMillis());
 	}

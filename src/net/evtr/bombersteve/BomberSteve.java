@@ -432,12 +432,13 @@ public class BomberSteve extends JavaPlugin {
 										if ( game.bStarted ) {
 											sender.sendMessage(ChatColor.RED + "You cannot join game " + ChatColor.GREEN + id + ChatColor.RED + " because it is in progress.");
 										} else {
-											int numPlayers = game.players.size();
-											getServer().broadcastMessage(ChatColor.GREEN + player.getDisplayName() + ChatColor.GOLD  + " joined game " + ChatColor.GREEN + id + ChatColor.GOLD + " (" + (numPlayers + 1) + " total).");
 											if ( currentGame != null ) {
 												currentGame.players.remove(bsPlayer);
 											}
 											game.addPlayer(bsPlayer);
+											int numPlayers = game.players.size();
+											getServer().broadcastMessage(ChatColor.GREEN + player.getDisplayName() + ChatColor.GOLD  + " joined game " + ChatColor.GREEN + id + ChatColor.GOLD + " (" + (numPlayers) + " total).");
+											
 										}
 									} else {
 										sender.sendMessage(ChatColor.RED + "Game id " + id + " does not exist.");

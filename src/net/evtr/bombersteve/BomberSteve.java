@@ -67,6 +67,22 @@ public class BomberSteve extends JavaPlugin {
 		}
 		return null;
 	}
+	public BomberGame getGame(int x, int y, int z) {
+		for ( int i = 0; i < games.size(); i++ ) {
+			if ( games.get(i).containsBlock(x, y, z) ) {
+				return games.get(i);
+			}
+		}
+		return null;
+	}
+	
+	public BomberGame getGame(Location loc) {
+		return getGame(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
+	}
+	
+	public BomberGame getGame(Block b) {
+		return getGame(b.getX(), b.getY(), b.getZ());
+	}
 	
 	public int newID() {
 		int id = 1;
@@ -417,7 +433,30 @@ public class BomberSteve extends JavaPlugin {
 							e.printStackTrace();
 							sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
 						}
-					}
+					} else if ( args[0].equalsIgnoreCase("npcs") ) {
+						if ( args.length > 1 ) {
+							try {
+								int id = Integer.valueOf(args[1]);
+								BomberGame game = getGame(id);
+								if ( game != null ) {
+									game.killNPCs();
+									game.spawnNPCs();
+									sender.sendMessage(ChatColor.GREEN + "Spawned NPCs in game " + ChatColor.GOLD + game.getID() + ChatColor.GREEN + ".");
+								}
+							} catch ( Exception e ) {
+								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+							}
+						} else {
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								game.killNPCs();
+								game.spawnNPCs();
+								sender.sendMessage(ChatColor.GREEN + "Spawned NPCs in game " + ChatColor.GOLD + game.getID() + ChatColor.GREEN + ".");
+							} else {
+								sender.sendMessage(ChatColor.RED + "No game selected.");
+							}
+						}
+					} 
 				}
 				BomberPlayer bsPlayer = getPlayer(player);
 				if ( args[0].equalsIgnoreCase("join") ) {

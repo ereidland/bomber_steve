@@ -8,10 +8,12 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Entity;
 import org.bukkit.util.Vector;
 
 public class BomberGame {
 	public java.util.Vector<BomberPlayer> players;
+	public java.util.Vector<BomberNPC> npcs;
 	private int id;
 	public boolean bStarted;
 	
@@ -21,12 +23,16 @@ public class BomberGame {
 	public BomberSteve plugin;
 	public World world;
 	
-	public int hardDensity, softDensity, hardSpacing, lastReady, timeUntilStart;
+	public int hardDensity, softDensity, hardSpacing, lastReady, timeUntilStart, maxNPCs;
 	
 	public Random random;
 	
 	public int getID() {
 		return id;
+	}
+	
+	public static  boolean isPerpindicular(int x1, int z1, int x2, int z2) {
+		return x1 == x2 || z1 == z2;
 	}
 	
 	public Material newPowerup() {
@@ -67,6 +73,29 @@ public class BomberGame {
 		return players.contains(player);
 	}
 	
+	public BomberNPC getNPC(Entity ent) {
+		for ( int i = 0; i < npcs.size(); i++ ) {
+			BomberNPC npc = npcs.get(i);
+			if ( npc.ent == ent ) {
+				return npc;
+			}
+		}
+		return null;
+	}
+	
+	public void spawnNPCs() {
+		while ( npcs.size() < maxNPCs ) {
+			npcs.add(new BomberNPC(randomSpawn()));
+		}
+	}
+	
+	public void killNPCs() {
+		for ( int i = 0; i < npcs.size(); i++ ) {
+			npcs.get(i).ent.remove();  
+		}
+		npcs.clear();
+	}
+	
 	public int getBombY() {
 		return bottomLeft.getBlockY() + 1;
 	}
@@ -89,6 +118,7 @@ public class BomberGame {
 			clearRegion();
 			resetPlayerInfo();
 			unReadyPlayers();
+			killNPCs();
 		}
 	}
 	
@@ -157,12 +187,7 @@ public class BomberGame {
 			} else {
 				plugin.getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + id + ChatColor.GOLD + " ended in a draw!");
 			}
-			
-			bStarted = false;
-			removeBombs();
-			clearRegion();
-			resetPlayerInfo();
-			unReadyPlayers();
+			stopGame();
 		}
 		
 		return gameEnded;
@@ -237,6 +262,22 @@ public class BomberGame {
 		}
 		return null;
 	}
+	
+	public boolean isBlockSafe(int x, int z) {
+		if ( !bStarted ) return true;
+		for ( int i = 0; i < players.size(); i++ ) {
+			BomberPlayer player = players.get(i);
+			for ( int j = 0; j < player.bombs.size(); j++ ) {
+				Block b = player.bombs.get(j).block;
+				if ( (b.getX() == x && Math.abs(b.getX() - x) <= player.range)
+				  || (b.getZ() == z && Math.abs(b.getZ() - z) <= player.range) ) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
 	public void setDamageOwner(int x, int z, BomberPlayer player) {
 		x -= bottomLeft.getBlockX();
 		z -= bottomLeft.getBlockZ();
@@ -289,6 +330,7 @@ public class BomberGame {
 			for ( int i = 0; i < toRemove.size(); i++ ) {
 				players.remove(toRemove.get(i));
 			}
+			spawnNPCs();
 			timeUntilStart = 4;
 			sendMessage(ChatColor.GOLD + "Start in...");
 		}
@@ -354,6 +396,13 @@ public class BomberGame {
 				player.bombs.remove(toRemove.get(j));
 			}
 		}
+		
+		for ( int i = 0; i < npcs.size(); i++ ) {
+			BomberNPC npc = npcs.get(i);
+			if ( !isBlockSafe(npc.ent.getLocation().getBlockX(), npc.ent.getLocation().getBlockZ()) ) {
+				npc.ent.setVelocity(new Vector(Math.random()*10 - 5, 1, Math.random()*10 - 5));
+			}
+		}
 	}
 	
 	public boolean placeBomb(BomberPlayer player, int x, int y, int z) {
@@ -409,11 +458,13 @@ public class BomberGame {
 	}
 	
 	public void initRegion() {
+		damageOwner = new BomberPlayer[size.getBlockX()][size.getBlockZ()];
+		
 		boolean other = true;
 		for ( int x = bottomLeft.getBlockX(); x < bottomLeft.getBlockX() + size.getBlockX(); x++ ) {
 			other = !other;
 			for ( int z = bottomLeft.getBlockZ(); z < bottomLeft.getBlockZ() + size.getBlockZ(); z++ ) {
-				world.getBlockAt(x, bottomLeft.getBlockY(), z).setType(other ? Material.GRASS : Material.DIRT);
+				world.getBlockAt(x, bottomLeft.getBlockY(), z).setType(other ? Material.SANDSTONE : Material.STONE);
 				world.getBlockAt(x, bottomLeft.getBlockY() + size.getBlockY() - 1, z).setType(Material.GLASS);
 				other = !other;
 				for ( int y = bottomLeft.getBlockY() + 1; y < bottomLeft.getBlockY() + size.getBlockY() - 1; y++ ) {
@@ -428,24 +479,29 @@ public class BomberGame {
 				}
 			}
 		}
-		
-		damageOwner = new BomberPlayer[size.getBlockX()][size.getBlockZ()];
 	}
 	public void addComplexity() {
 		addRandomBlocks(hardDensity, false);
 		addRandomBlocks(softDensity, true);
 		addColumns(hardSpacing);
 	}
-	
-	private void bringPlayer(BomberPlayer player, int numTries) {
+	private Location randomSpawn(int numTries) {
 		int bx = bottomLeft.getBlockX() + 1 + random.nextInt(size.getBlockX() - 2), by =  getBombY(), bz = bottomLeft.getBlockZ() + 1 + random.nextInt(size.getBlockZ() - 2);
 		Block b = world.getBlockAt(bx, by, bz);
 		if ( b.getType() == Material.AIR || numTries >= 10 ) {
-			player.player.teleport(new Location(world, bx + 0.5, by, bz + 0.5));
-			player.player.sendMessage(ChatColor.GOLD + "To arena " + ChatColor.GREEN + id + ChatColor.GOLD + "!");
+			return new Location(world, b.getX() + 0.5, b.getY(), b.getZ() + 0.5);
 		} else {
-			bringPlayer(player, numTries + 1);
+			return randomSpawn(numTries + 1);
 		}
+	}
+	
+	public Location randomSpawn() {
+		return randomSpawn(0);
+	}
+	
+	private void bringPlayer(BomberPlayer player, int numTries) {
+		player.player.teleport(randomSpawn());
+		player.player.sendMessage(ChatColor.GOLD + "To arena " + ChatColor.GREEN + id + ChatColor.GOLD + "!");
 	}
 	
 	public void bringPlayer(BomberPlayer player) {
@@ -459,6 +515,7 @@ public class BomberGame {
 		bStarted = false;
 		this.id = id;
 		players = new java.util.Vector<BomberPlayer>();
+		npcs = new java.util.Vector<BomberNPC>();
 		
 		this.bottomLeft = bottomLeft;
 		this.size = size;
@@ -473,5 +530,6 @@ public class BomberGame {
 		timeUntilStart = 0;
 		
 		random = new Random(System.currentTimeMillis());
+		maxNPCs = 2;
 	}
 }

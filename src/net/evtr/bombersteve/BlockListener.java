@@ -23,8 +23,8 @@ public class BlockListener implements Listener {
 			if ( plugin.containsBlock(modBlock) ) {
 				event.setCancelled(true);
 			}
-			if ( game != null ) {
-				if ( modBlock.getType() == Material.AIR  ) {					
+			if ( game != null && game.containsBlock(modBlock) ) {
+				if ( modBlock.getType() == Material.AIR || modBlock.getType() == Material.FIRE  ) {					
 					game.placeBomb(plugin.getPlayer(player), modBlock.getX(), game.getBombY(), modBlock.getZ());
 				} else {
 					player.sendMessage(ChatColor.RED + "Can't place bomb!");

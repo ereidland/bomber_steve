@@ -2,6 +2,8 @@ package net.evtr.bombersteve;
 
 import java.util.Vector;
 
+import net.evtr.bombersteve.BomberGame.DamageOwner;
+
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
@@ -23,7 +25,7 @@ public class BomberPlayer {
 	
 	public Vector<Bomb> bombs;
 	
-	public BomberPlayer killer;
+	public DamageOwner killer;
 	
 	public boolean ownsBomb(Block b) {
 		for ( int i = 0; i < bombs.size(); i++ ) {

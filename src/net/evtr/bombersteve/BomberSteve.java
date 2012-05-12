@@ -26,7 +26,17 @@ public class BomberSteve extends JavaPlugin {
 	public java.util.Vector<BomberGame> games;
 	public java.util.Vector<BomberPlayer> players;
 	
-	public int sizeX = 16, sizeY = 8, sizeZ = 16, density = 20, hDensity = 5, columnIncrement = 4, selectedGame = 0, readyMargin = 60;
+	public int sizeX = 16,
+			   sizeY = 8,
+			   sizeZ = 16,
+			   density = 20,
+			   hDensity = 5,
+			   columnIncrement = 4,
+			   selectedGame = 0, 
+			   readyMargin = 60,
+			   defaultNPCs = 2,
+			   sizePer = 8;
+	public boolean defaultAutoScale = false;
 	
 	public Location victoryLocation;
 	
@@ -160,6 +170,9 @@ public class BomberSteve extends JavaPlugin {
 						game.hardDensity = hDensity;
 						game.softDensity = density;
 						game.hardSpacing = columnIncrement;
+						game.maxNPCs = defaultNPCs;
+						game.autoScale = defaultAutoScale;
+						game.sizePerPlayer = sizePer;
 						games.add(game);
 						sender.sendMessage(ChatColor.GREEN + "New game created with id " + game.getID() + ". Initializing region...");
 						game.initRegion();
@@ -423,9 +436,22 @@ public class BomberSteve extends JavaPlugin {
 								density = 1;
 							}
 							sender.sendMessage(ChatColor.YELLOW + "Current ready percent required to start a game: %" + readyMargin);
+						} catch ( Exception e ) {
+							e.printStackTrace();
+							sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+						}
+					} else if ( args[0].equalsIgnoreCase("npcs") ) {
+						try {
+							if ( args.length > 1 ) {
+								defaultNPCs = Integer.valueOf(args[1]);
+							}
+							if ( defaultNPCs < 0 ) defaultNPCs = 0; // No high cap because people should have the freedom to break their servers.
+							
+							sender.sendMessage(ChatColor.YELLOW + "Current default npc count: " + defaultNPCs);
+							
 							BomberGame game = getGame(selectedGame);
 							if ( game != null ) {
-								game.softDensity = density;
+								game.maxNPCs = defaultNPCs;
 								
 								sender.sendMessage(ChatColor.GREEN + "Set value for game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
 							}
@@ -433,30 +459,50 @@ public class BomberSteve extends JavaPlugin {
 							e.printStackTrace();
 							sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
 						}
-					} else if ( args[0].equalsIgnoreCase("npcs") ) {
-						if ( args.length > 1 ) {
-							try {
-								int id = Integer.valueOf(args[1]);
-								BomberGame game = getGame(id);
-								if ( game != null ) {
-									game.killNPCs();
-									game.spawnNPCs();
-									sender.sendMessage(ChatColor.GREEN + "Spawned NPCs in game " + ChatColor.GOLD + game.getID() + ChatColor.GREEN + ".");
-								}
-							} catch ( Exception e ) {
-								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+					} else if ( args[0].equalsIgnoreCase("sizeper") ) {
+						try {
+							if ( args.length > 1 ) {
+								sizePer = Integer.valueOf(args[1]);
 							}
-						} else {
+							if ( sizePer < 8 ) sizePer = 8;
+							
+							sender.sendMessage(ChatColor.YELLOW + "Current size per player: " + sizePer);
+							
 							BomberGame game = getGame(selectedGame);
 							if ( game != null ) {
-								game.killNPCs();
-								game.spawnNPCs();
-								sender.sendMessage(ChatColor.GREEN + "Spawned NPCs in game " + ChatColor.GOLD + game.getID() + ChatColor.GREEN + ".");
-							} else {
-								sender.sendMessage(ChatColor.RED + "No game selected.");
+								game.sizePerPlayer = sizePer;
+								
+								sender.sendMessage(ChatColor.GREEN + "Set value for game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
+							}
+						} catch ( Exception e ) {
+							e.printStackTrace();
+							sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+						}
+					} else if ( args[0].equalsIgnoreCase("autoscale") ) {
+						boolean bFailed = false;
+						try {
+							if ( args.length > 1 ) {
+								defaultAutoScale = (Integer.valueOf(args[1]) == 1);
+							}
+						} catch ( Exception e ) {
+							try {
+								defaultAutoScale = Boolean.valueOf(args[1]);
+							} catch ( Exception e2 ) {
+								e2.printStackTrace();
+								sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+								bFailed = true;
 							}
 						}
-					} 
+						sender.sendMessage(ChatColor.YELLOW + "Current autoScale: " + defaultAutoScale);
+						if ( !bFailed ) {
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								game.autoScale = defaultAutoScale;
+								
+								sender.sendMessage(ChatColor.GREEN + "Set value for game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
+							}
+						}
+					}
 				}
 				BomberPlayer bsPlayer = getPlayer(player);
 				if ( args[0].equalsIgnoreCase("join") ) {

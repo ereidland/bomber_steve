@@ -48,7 +48,7 @@ public class EntityListener implements Listener {
 					
 					BomberGame game = plugin.getGame(player.gameID);
 					if ( game != null ) {
-						BomberPlayer damager = game.getDamageOwner(player.player.getLocation().getBlockX(), player.player.getLocation().getBlockZ());
+						BomberGame.DamageOwner damager = game.getDamageOwner(player.player.getLocation().getBlockX(), player.player.getLocation().getBlockZ());
 						//player.player.damage(9001, damager != null ? damager.player : player.player);
 						player.killer = damager; 
 						player.hasDied = true;
@@ -60,11 +60,11 @@ public class EntityListener implements Listener {
 					if ( game != null ) {
 						BomberNPC npc = game.getNPC(event.getEntity());
 						if ( npc != null ) {
-							BomberPlayer damageOwner = game.getDamageOwner(npc.ent.getLocation().getBlockX(), npc.ent.getLocation().getBlockZ());
-							if ( damageOwner == null ) {
+							BomberGame.DamageOwner damager = game.getDamageOwner(npc.ent.getLocation().getBlockX(), npc.ent.getLocation().getBlockZ());
+							if ( damager == null ) {
 								plugin.getServer().broadcastMessage(ChatColor.RED + BomberNPC.entityType.toString() + ChatColor.GOLD + " magically burned itself in game " + ChatColor.GREEN + game.getID());
 							} else {
-								plugin.getServer().broadcastMessage(ChatColor.GREEN + damageOwner.player.getDisplayName() + ChatColor.GOLD + " defeated " + ChatColor.RED + BomberNPC.entityType.toString() + ChatColor.GOLD + " in game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + "." );
+								plugin.getServer().broadcastMessage(ChatColor.GREEN + damager.getName() + ChatColor.GOLD + " defeated " + ChatColor.RED + BomberNPC.entityType.toString() + ChatColor.GOLD + " in game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + "." );
 							}
 							
 							npc.ent.remove();
@@ -85,14 +85,14 @@ public class EntityListener implements Listener {
 		BomberGame game = plugin.getGame(player.gameID);
 		
 		if ( game != null ) {
-			BomberPlayer killer = player.killer;
+			BomberGame.DamageOwner killer = player.killer;
 			if ( killer == null ) {
 				event.setDeathMessage(ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " magically died in game " + ChatColor.GREEN + player.gameID + ChatColor.GOLD + ".");
-			} else if ( killer != player) {
-				killer.points++;
-				event.setDeathMessage(ChatColor.GREEN + killer.player.getDisplayName() + ChatColor.GOLD + " defeated " + ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + "." );
+			} else if ( !killer.getName().equals(player.player.getDisplayName())) {
+				killer.addKill();
+				event.setDeathMessage(ChatColor.GREEN + killer.getName() + ChatColor.GOLD + " defeated " + ChatColor.RED + player.player.getDisplayName() + ChatColor.GOLD + " in game " + ChatColor.GREEN +player.gameID + ChatColor.GOLD + "." );
 			} else {
-				event.setDeathMessage(ChatColor.RED + killer.player.getDisplayName() + ChatColor.GOLD + " blew theirself up in game " + ChatColor.GREEN + killer.gameID + ChatColor.GOLD + ".");
+				event.setDeathMessage(ChatColor.RED + killer.getName() + ChatColor.GOLD + " blew theirself up in game " + ChatColor.GREEN + player.gameID + ChatColor.GOLD + ".");
 			}
 			player.hasDied = true;
 		}
@@ -109,6 +109,16 @@ public class EntityListener implements Listener {
 	public void entityPrimed(ExplosionPrimeEvent event) {
 		if ( plugin.containsBlock(event.getEntity().getLocation().getBlock()) ) {
 			event.setCancelled(true);
+			
+			if ( event.getEntityType() == BomberNPC.entityType ) {
+				BomberGame game = plugin.getGame(event.getEntity().getLocation().getBlock());
+				if ( game != null ) {
+					BomberNPC npc = game.getNPC(event.getEntity());
+					if ( npc != null ) {
+						game.detonateBomb(new BomberGame.NPCDamageOwner(npc), npc.ent.getLocation().getBlockX(), npc.ent.getLocation().getBlockZ(), npc.range);
+					}
+				}
+			}
 		}
 	}
 	

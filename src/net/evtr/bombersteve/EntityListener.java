@@ -1,16 +1,19 @@
 package net.evtr.bombersteve;
 
 import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityCombustEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 
 public class EntityListener implements Listener {
 	BomberSteve plugin;
@@ -21,20 +24,40 @@ public class EntityListener implements Listener {
 	}
 	
 	@EventHandler
-	public void playerDamageEvent(EntityDamageEvent event) {
-		if ( event.getEntityType() == EntityType.PLAYER ) {
-			BomberPlayer player = plugin.getPlayer((Player)event.getEntity());
+	public void playerGameModeChange(PlayerGameModeChangeEvent event) {
+		if ( event.getNewGameMode() == GameMode.CREATIVE ) {
+			BomberPlayer player = plugin.getPlayer(event.getPlayer());
 			BomberGame game = plugin.getGame(player.gameID);
-			
-			if ( game != null ) {
-				switch ( event.getCause() ) {
-					case FIRE:
-						break;
-					default:
-						event.setCancelled(true);
-				}
+			if ( game != null && game.bStarted ) {
+				player.player.sendMessage(ChatColor.RED + "No creativity for you!");
+				event.setCancelled(true);
 			}
 		}
+	}
+	
+	@EventHandler
+	public void playerTeleportEvent(PlayerTeleportEvent event) {
+		BomberPlayer player = plugin.getPlayer(event.getPlayer());
+		BomberGame game = plugin.getGame(player.gameID);
+		if ( game != null && game.bStarted && !game.containsBlock(event.getTo().getBlock()) ) {
+			player.player.sendMessage(ChatColor.RED + "Can't teleport from an active game!");
+			event.setCancelled(true);
+		}
+	}
+	
+	@EventHandler
+	public void playerDamageEvent(EntityDamageByEntityEvent event) {
+		BomberPlayer player = null;
+		if ( event.getEntityType() == EntityType.PLAYER ) {
+			player = plugin.getPlayer((Player)event.getEntity());
+		} else if ( event.getDamager().getType() == EntityType.PLAYER) {
+			player = plugin.getPlayer((Player)event.getDamager());
+		}
+		
+		if ( player != null && plugin.getGame(player.gameID) != null ) {
+			event.setCancelled(true);
+		}
+		
 	}
 	
 	@EventHandler

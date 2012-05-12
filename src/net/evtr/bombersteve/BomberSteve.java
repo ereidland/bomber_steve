@@ -522,9 +522,7 @@ public class BomberSteve extends JavaPlugin {
 							if ( args.length > 1 ) {
 								columnIncrement = Integer.valueOf(args[1]);
 							}
-							if ( columnIncrement > Math.max(sizeX, sizeZ) ) {
-								columnIncrement = Math.max(sizeX, sizeZ);
-							} else if ( columnIncrement < 2 ) {
+							if ( columnIncrement < 2 ) {
 								columnIncrement = 2;
 							}
 							sender.sendMessage(ChatColor.YELLOW + "Current default column increment: " + columnIncrement);

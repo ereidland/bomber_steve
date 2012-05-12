@@ -155,7 +155,9 @@ public class BomberGame {
 	
 	public void killNPCs() {
 		for ( int i = 0; i < npcs.size(); i++ ) {
-			npcs.get(i).ent.remove();  
+			BomberNPC npc = npcs.get(i);
+			world.playEffect(npc.ent.getLocation(), Effect.POTION_BREAK, 0);
+			npc.ent.remove();
 		}
 		npcs.clear();
 	}
@@ -165,9 +167,9 @@ public class BomberGame {
 	}
 	
 	public boolean containsBlock(int x, int y, int z) {
-		return x >= bottomLeft.getBlockX() && x <= bottomLeft.getBlockX() + size.getBlockX()
-			&& y >= bottomLeft.getBlockY() && y <= bottomLeft.getBlockY() + size.getBlockY()
-			&& z >= bottomLeft.getBlockZ() && z <= bottomLeft.getBlockZ() + size.getBlockZ();
+		return x >= bottomLeft.getBlockX() && x < bottomLeft.getBlockX() + size.getBlockX()
+			&& y >= bottomLeft.getBlockY() && y < bottomLeft.getBlockY() + size.getBlockY()
+			&& z >= bottomLeft.getBlockZ() && z < bottomLeft.getBlockZ() + size.getBlockZ();
 	}
 	
 	public boolean containsBlock(Block b) {
@@ -212,16 +214,16 @@ public class BomberGame {
 		if ( radiusScalar < -1 ) radiusScalar = -1;
 		int widthRadius = size.getBlockX()/2,
 			heightRadius = size.getBlockZ()/2,
-			centerX = bottomLeft.getBlockX() + (int)(widthRadius*radiusScalar),
-			centerZ = bottomLeft.getBlockZ() + (int)(heightRadius*radiusScalar);
+			centerX = bottomLeft.getBlockX() + (int)(widthRadius),
+			centerZ = bottomLeft.getBlockZ() + (int)(heightRadius);
 		
 		Location loc = new Location(world, centerX, getBombY(), centerZ);
-		if ( players.size() == 0 ) {
+		if ( maxIndex == 0 ) {
 			return loc;
 		}
 		double angle = (index/(double)maxIndex)*Math.PI*2;
-		loc.setX(centerX + Math.cos(angle)*(widthRadius - 2));
-		loc.setZ(centerZ + Math.sin(angle)*(heightRadius - 2));
+		loc.setX(centerX + Math.cos(angle)*(widthRadius - 2)*radiusScalar);
+		loc.setZ(centerZ + Math.sin(angle)*(heightRadius - 2)*radiusScalar);
 		return loc;
 	}
 	
@@ -512,7 +514,7 @@ public class BomberGame {
 				bomb.timeLeft--;
 				
 				if ( bomb.timeLeft == 1 ) {
-					world.playEffect(bomb.block.getLocation(), Effect.EXTINGUISH, 0);
+					world.playEffect(bomb.block.getLocation(), Effect.BOW_FIRE, 0);
 				}
 				
 				if ( bomb.timeLeft <= 0 ) {

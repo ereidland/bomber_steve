@@ -1,5 +1,6 @@
 package net.evtr.bombersteve;
 
+import java.io.File;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
@@ -14,6 +15,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
+import com.evanreidland.e.Settings;
+
 public class BomberSteve extends JavaPlugin {
 	
 	private EntityListener entityListener;
@@ -27,7 +30,7 @@ public class BomberSteve extends JavaPlugin {
 	public java.util.Vector<BomberPlayer> players;
 	
 	public int sizeX = 16,
-			   sizeY = 8,
+			   sizeY = 6,
 			   sizeZ = 16,
 			   density = 20,
 			   hDensity = 5,
@@ -35,7 +38,107 @@ public class BomberSteve extends JavaPlugin {
 			   selectedGame = 0, 
 			   readyMargin = 60,
 			   defaultNPCs = 2,
-			   sizePer = 8;
+			   sizePer = 8,
+			   powerRarity = 5;
+	
+	public void loadData() {
+		File dataFolder = getDataFolder();
+		if ( !dataFolder.exists() ) {
+			dataFolder.mkdir();
+			return;
+		}
+		
+		Settings settings = new Settings();
+		settings.readFromFile(getDataFolder() + File.separator + "settings.txt");
+		
+		sizeX = settings.getSetting("sizeX").asInt(16);
+		sizeY = settings.getSetting("sizeY").asInt(8);
+		sizeZ = settings.getSetting("sizeZ").asInt(16);
+		density = settings.getSetting("density").asInt(20);
+		hDensity = settings.getSetting("hdensity").asInt(5);
+		columnIncrement = settings.getSetting("increment").asInt(4);
+		readyMargin = settings.getSetting("readyMargin").asInt(60);
+		defaultNPCs = settings.getSetting("defaultNPCs").asInt(2);
+		sizePer = settings.getSetting("sizePerPlayer").asInt(8);
+		defaultAutoScale = settings.getSetting("autoScale").asBool(false);
+		powerRarity = settings.getSetting("powerRarity").asInt(5);
+		
+		
+		settings = new Settings();
+		settings.readFromFile(getDataFolder() + File.separator + "regions.txt");
+		
+		int i = 1;
+		String prefix = "g" + i + ".";
+		while ( settings.getSetting(prefix + "exists").asBool(false) ) {
+			int x = settings.getSetting(prefix + "x").asInt();
+			int y = settings.getSetting(prefix + "y").asInt();
+			int z = settings.getSetting(prefix + "z").asInt();
+			int sx = settings.getSetting(prefix + "sx").asInt(sizeX);
+			int sy = settings.getSetting(prefix + "sy").asInt(sizeY);
+			int sz = settings.getSetting(prefix + "sz").asInt(sizeZ);
+			
+			BomberGame game = new BomberGame(this, newID(), new Vector(x, y, z), new Vector(sx, sy, sz));
+			
+			game.hardSpacing = settings.getSetting(prefix + "increment").asInt(columnIncrement);
+			game.softDensity = settings.getSetting(prefix + "density").asInt(density);
+			game.hardDensity = settings.getSetting(prefix + "hdensity").asInt(hDensity);
+			game.maxNPCs = settings.getSetting(prefix + "npcs").asInt(defaultNPCs);
+			game.sizePerPlayer = settings.getSetting(prefix + "sizePer").asInt(sizePer);
+			game.autoScale = settings.getSetting(prefix + "autoScale").asBool(defaultAutoScale);
+			game.powerRarity = settings.getSetting(prefix + "powerRarity").asInt(powerRarity);
+			
+			games.add(game);
+			
+			prefix = "g" + (++i) + ".";
+		}
+			
+		
+		
+	}
+	
+	public void saveData() {
+		File dataFolder = getDataFolder();
+		if ( !dataFolder.exists() ) {
+			dataFolder.mkdir();
+		}
+		
+		Settings settings = new Settings();
+		settings.addSetting("sizeX", sizeX);
+		settings.addSetting("sizeY", sizeY);
+		settings.addSetting("sizeZ", sizeZ);
+		settings.addSetting("density", density);
+		settings.addSetting("hdensity", hDensity);
+		settings.addSetting("increment", columnIncrement);
+		settings.addSetting("readyMargin", readyMargin);
+		settings.addSetting("defaultNPCs", defaultNPCs);
+		settings.addSetting("sizePerPlayer", sizePer);
+		settings.addSetting("autoScale", defaultAutoScale);
+		
+		settings.writeToFile(getDataFolder() + File.separator + "settings.txt");
+		
+		settings = new Settings();
+		for ( int i = 0; i < games.size(); i++ ) {
+			String prefix = "g" + (i + 1) + ".";
+			settings.addSetting(prefix + "exists", true);
+			
+			BomberGame game = games.get(i);
+			settings.addSetting(prefix + "x", game.getBottomLeft().getBlockX());
+			settings.addSetting(prefix + "y", game.getBottomLeft().getBlockY());
+			settings.addSetting(prefix + "z", game.getBottomLeft().getBlockZ());
+			settings.addSetting(prefix + "sx", game.getSize().getBlockX());
+			settings.addSetting(prefix + "sy", game.getSize().getBlockY());
+			settings.addSetting(prefix + "sz", game.getSize().getBlockZ());
+			settings.addSetting(prefix + "increment", game.hardSpacing);
+			settings.addSetting(prefix + "density", game.softDensity);
+			settings.addSetting(prefix + "hdensity", game.hardDensity);
+			settings.addSetting(prefix + "npcs", game.maxNPCs);
+			settings.addSetting(prefix + "sizePer", game.sizePerPlayer);
+			settings.addSetting(prefix + "autoScale", game.autoScale);
+			settings.addSetting(prefix + "powerRarity", game.powerRarity);
+		}
+		settings.writeToFile(getDataFolder() + File.separator + "regions.txt");
+	}
+	
 	public boolean defaultAutoScale = false;
 	
 	public Location victoryLocation;
@@ -48,6 +151,8 @@ public class BomberSteve extends JavaPlugin {
 		getServer().getPluginManager().registerEvents(blockListener, this);
 		getServer().getPluginManager().registerEvents(entityListener, this);
 		
+		loadData();
+		
 		logicTimer = new Timer();
 		logicTimer.scheduleAtFixedRate(new TimerTask() {
 			public void run() {
@@ -57,6 +162,10 @@ public class BomberSteve extends JavaPlugin {
 				}
 			}
 		}, 1000, 1000);
+	}
+	
+	public void onDisable() {
+		saveData();
 	}
 	
 	public int getActiveGameCount() {
@@ -173,6 +282,7 @@ public class BomberSteve extends JavaPlugin {
 						game.maxNPCs = defaultNPCs;
 						game.autoScale = defaultAutoScale;
 						game.sizePerPlayer = sizePer;
+						game.powerRarity = powerRarity;
 						games.add(game);
 						sender.sendMessage(ChatColor.GREEN + "New game created with id " + game.getID() + ". Initializing region...");
 						game.initRegion();
@@ -186,7 +296,11 @@ public class BomberSteve extends JavaPlugin {
 								if ( game != null ) {
 									if ( !game.bStarted ) {
 										game.startGame();
-										getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + " was started by " + sender.getName() + ".");
+										if ( game.players.size() > 1 ) {
+											getServer().broadcastMessage(ChatColor.GOLD + "Game " + ChatColor.GREEN + game.getID() + ChatColor.GOLD + " was started by " + sender.getName() + ".");
+										} else {
+											sender.sendMessage(ChatColor.RED + "Can't start game " + ChatColor.GOLD + game.getID() + ChatColor.RED + ". Not enough players.");
+										}
 									}
 								} else {
 									sender.sendMessage(ChatColor.RED + "Game " + ChatColor.GOLD + id + ChatColor.RED + " does not exist.");
@@ -464,7 +578,7 @@ public class BomberSteve extends JavaPlugin {
 							if ( args.length > 1 ) {
 								sizePer = Integer.valueOf(args[1]);
 							}
-							if ( sizePer < 8 ) sizePer = 8;
+							if ( sizePer < 3 ) sizePer = 3;
 							
 							sender.sendMessage(ChatColor.YELLOW + "Current size per player: " + sizePer);
 							
@@ -493,7 +607,7 @@ public class BomberSteve extends JavaPlugin {
 								bFailed = true;
 							}
 						}
-						sender.sendMessage(ChatColor.YELLOW + "Current autoScale: " + defaultAutoScale);
+						sender.sendMessage(ChatColor.YELLOW + "Current auto-scale state: " + defaultAutoScale);
 						if ( !bFailed ) {
 							BomberGame game = getGame(selectedGame);
 							if ( game != null ) {
@@ -502,7 +616,25 @@ public class BomberSteve extends JavaPlugin {
 								sender.sendMessage(ChatColor.GREEN + "Set value for game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
 							}
 						}
-					}
+					} else if ( args[0].equalsIgnoreCase("powers") ) {
+						try {
+							if ( args.length > 1 ) {
+								powerRarity = Integer.valueOf(args[1]);
+							}
+							if ( powerRarity < -1 ) powerRarity = -1; // No powers at all.
+							
+							sender.sendMessage(ChatColor.YELLOW + "Current powerup rarity (2 means every block has a powerup): " + powerRarity);
+							
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								game.powerRarity = powerRarity;
+								sender.sendMessage(ChatColor.GREEN + "Set value for game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
+							}
+						} catch ( Exception e ) {
+							e.printStackTrace();
+							sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
+						}
+					} 
 				}
 				BomberPlayer bsPlayer = getPlayer(player);
 				if ( args[0].equalsIgnoreCase("join") ) {
@@ -537,7 +669,8 @@ public class BomberSteve extends JavaPlugin {
 						}
 					} else {
 						int id = getPlayer(player).gameID;
-						if ( id == 0 ) {
+						BomberGame game = getGame(id);
+						if ( game != null) {
 							sender.sendMessage(ChatColor.YELLOW + "Your current game ID is " + ChatColor.GREEN + id);
 						} else {
 							sender.sendMessage(ChatColor.YELLOW + "You are not in a game. Please use /bs join <gameid>");
@@ -549,9 +682,11 @@ public class BomberSteve extends JavaPlugin {
 						game.removePlayer(bsPlayer);
 						bsPlayer.gameID = 0;
 						if ( game.bStarted ) {
+							game.sendMessage(ChatColor.RED + player.getDisplayName() + ChatColor.YELLOW + " left the bomber game. ");
 							sender.sendMessage(ChatColor.RED + "Leaver! :(");
 						} else {
 							sender.sendMessage(ChatColor.GREEN + "Left game " + ChatColor.GOLD + game.getID() + ChatColor.GREEN + ".");
+							game.sendMessage(ChatColor.RED + player.getDisplayName() + ChatColor.YELLOW + " left the idle bomber game. ");
 						}
 					} else {
 						sender.sendMessage(ChatColor.RED + "You are not even in a game. Use /bs join <gameid>");

@@ -3,14 +3,13 @@ package net.evtr.bombersteve;
 import java.util.Random;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Effect;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
 public class BomberGame {
@@ -25,7 +24,7 @@ public class BomberGame {
 	public BomberSteve plugin;
 	public World world;
 	
-	public int hardDensity, softDensity, hardSpacing, lastReady, timeUntilStart, maxNPCs, sizePerPlayer;
+	public int hardDensity, softDensity, hardSpacing, lastReady, timeUntilStart, maxNPCs, sizePerPlayer, powerRarity;
 	
 	public boolean autoScale;
 	
@@ -76,7 +75,7 @@ public class BomberGame {
 	}
 	
 	public Material newPowerup() {
-		int n = random.nextInt(5);
+		int n = random.nextInt(powerRarity);
 		switch ( n ) {
 			case 0:
 				return Material.RED_ROSE;
@@ -142,8 +141,15 @@ public class BomberGame {
 	}
 	
 	public void spawnNPCs() {
+		java.util.Vector<Integer> indexes = new java.util.Vector<Integer>();
+		
+		for ( int i = npcs.size(); i < maxNPCs; i++ ) {
+			indexes.add(i);
+		}
 		while ( npcs.size() < maxNPCs ) {
-			npcs.add(new BomberNPC(randomSpawn()));
+			Location loc = spawnLocation(indexes.remove(random.nextInt(indexes.size())), maxNPCs, 0.5);
+			clearColumn(loc.getBlockX(), loc.getBlockZ());
+			npcs.add(new BomberNPC(loc));
 		}
 	}
 	
@@ -201,17 +207,19 @@ public class BomberGame {
 		}
 	}
 	
-	public Location spawnLocation(int index) {
+	public Location spawnLocation(int index, int maxIndex, double radiusScalar) {
+		if ( radiusScalar > 1 ) radiusScalar = 1;
+		if ( radiusScalar < -1 ) radiusScalar = -1;
 		int widthRadius = size.getBlockX()/2,
 			heightRadius = size.getBlockZ()/2,
-			centerX = bottomLeft.getBlockX() + widthRadius,
-			centerZ = bottomLeft.getBlockZ() + heightRadius;
+			centerX = bottomLeft.getBlockX() + (int)(widthRadius*radiusScalar),
+			centerZ = bottomLeft.getBlockZ() + (int)(heightRadius*radiusScalar);
 		
 		Location loc = new Location(world, centerX, getBombY(), centerZ);
 		if ( players.size() == 0 ) {
 			return loc;
 		}
-		double angle = (index/(double)players.size())*Math.PI*2;
+		double angle = (index/(double)maxIndex)*Math.PI*2;
 		loc.setX(centerX + Math.cos(angle)*(widthRadius - 2));
 		loc.setZ(centerZ + Math.sin(angle)*(heightRadius - 2));
 		return loc;
@@ -503,6 +511,10 @@ public class BomberGame {
 				BomberPlayer.Bomb bomb = player.bombs.get(j);
 				bomb.timeLeft--;
 				
+				if ( bomb.timeLeft == 1 ) {
+					world.playEffect(bomb.block.getLocation(), Effect.EXTINGUISH, 0);
+				}
+				
 				if ( bomb.timeLeft <= 0 ) {
 					detonateBomb(new PlayerDamageOwner(player), bomb.block.getX(), bomb.block.getZ(), player.range);
 					toRemove.add(bomb);
@@ -519,11 +531,13 @@ public class BomberGame {
 			BomberPlayer player = getNearestLivingPlayer(npc.ent.getLocation());
 			if ( player != null ) {
 				if ( npc.ent.getTarget() != player.player ) {
-					if ( npc.ent.getTarget() != null && npc.ent.getTarget().getType() == EntityType.PLAYER ) {
+					npc.ent.setTarget(player.player);
+					/*if ( npc.ent.getTarget() != null && npc.ent.getTarget().getType() == EntityType.PLAYER ) {
 						((Player)npc.ent.getTarget()).sendMessage(ChatColor.GREEN + "A " + ChatColor.RED + BomberNPC.entityType.toString() + ChatColor.GREEN + " is no longer targeting you!");
 					}
-					npc.ent.setTarget(player.player);
+					
 					player.player.sendMessage(ChatColor.GOLD + "A " + ChatColor.RED + BomberNPC.entityType.toString() + ChatColor.GOLD + " is targeting you!");
+					*/
 				}
 			}
 			/*if ( !isBlockSafe(npc.ent.getLocation().getBlockX(), npc.ent.getLocation().getBlockZ()) ) {
@@ -628,7 +642,7 @@ public class BomberGame {
 	
 	public void bringPlayer(BomberPlayer player, int spawnIndex) {
 		if ( hasPlayer(player)) {
-			Location loc = spawnLocation(spawnIndex);
+			Location loc = spawnLocation(spawnIndex, players.size(), 1);
 			ensureSafeSpawn(loc.getBlockX(), loc.getBlockZ());
 			player.player.teleport(loc);
 			
@@ -660,5 +674,6 @@ public class BomberGame {
 		
 		autoScale = false;
 		sizePerPlayer = 8;
+		powerRarity = 5;
 	}
 }

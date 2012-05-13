@@ -148,7 +148,7 @@ public class BomberGame {
 		}
 		while ( npcs.size() < maxNPCs ) {
 			Location loc = spawnLocation(indexes.remove(random.nextInt(indexes.size())), maxNPCs, 0.5);
-			clearColumn(loc.getBlockX(), loc.getBlockZ());
+			clearGameColumn(loc.getBlockX(), loc.getBlockZ());
 			npcs.add(new BomberNPC(loc));
 		}
 	}

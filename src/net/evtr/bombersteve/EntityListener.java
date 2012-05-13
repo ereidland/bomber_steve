@@ -9,6 +9,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityCombustEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.ExplosionPrimeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerGameModeChangeEvent;
@@ -42,6 +43,17 @@ public class EntityListener implements Listener {
 		if ( game != null && game.bStarted && !game.containsBlock(event.getTo().getBlock()) ) {
 			player.player.sendMessage(ChatColor.RED + "Can't teleport from an active game!");
 			event.setCancelled(true);
+		}
+	}
+	
+	@EventHandler
+	public void playerDamagedEvent(EntityDamageEvent event) {
+		if ( event.getEntityType() == EntityType.PLAYER ) {
+			BomberPlayer player = plugin.getPlayer((Player)event.getEntity());
+			BomberGame game = plugin.getGame(player.gameID);
+			if ( game != null ) {
+				event.setCancelled(true);
+			}
 		}
 	}
 	

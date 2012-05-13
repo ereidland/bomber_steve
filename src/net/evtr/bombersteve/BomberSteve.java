@@ -471,6 +471,14 @@ public class BomberSteve extends JavaPlugin {
 							if ( sizeZ < 8 ) sizeZ = 8;
 							
 							sender.sendMessage(ChatColor.YELLOW + "Current default region size: " + sizeX + "x" + sizeZ + " and " + sizeY + " tall.");
+							
+							BomberGame game = getGame(selectedGame);
+							if ( game != null ) {
+								sender.sendMessage(ChatColor.GREEN + "Set value for game " + ChatColor.GOLD + selectedGame + ChatColor.GREEN + ".");
+								game.getSize().setX(sizeX);
+								game.getSize().setY(sizeY);
+								game.getSize().setZ(sizeZ);
+							}
 						} catch ( Exception e ) {
 							e.printStackTrace();
 							sender.sendMessage(ChatColor.RED + "Exception: " + e.getMessage());
